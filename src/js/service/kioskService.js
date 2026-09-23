@@ -2,7 +2,6 @@ import { localStorageService } from './data/localStorageService';
 import { util } from '../util/util';
 
 let _beforeUnloadHandler = null;
-let _popstateHandler = null;
 let _wakeLock = null;
 
 let kioskService = {};
@@ -12,14 +11,36 @@ kioskService.lockApp = async function () {
 
     // 1. Android Native Kiosk / Lock Task
     if (window.AndroidNative && window.AndroidNative.setAppLocked) {
-        window.AndroidNative.setAppLocked(true);
+        try {
+            window.AndroidNative.setAppLocked(true);
+        } catch (e) {}
     }
 
     // 2. Web Kiosk / Pinning behavior
     if (appSettings.pinAppOnLock) {
-        // Enforce Fullscreen
+        // Enforce Fullscreen safely
         if (!util.isFullscreen()) {
-            util.openFullscreen();
+            try {
+                let p = util.openFullscreen();
+                if (p && p.catch) {
+                    p.catch(() => {
+                        // User gesture needed: attach one-time listener
+                        const onGesture = () => {
+                            if (!util.isFullscreen()) {
+                                try { util.openFullscreen(); } catch (err) {}
+                            }
+                        };
+                        window.addEventListener('pointerdown', onGesture, { once: true });
+                    });
+                }
+            } catch (e) {
+                const onGesture = () => {
+                    if (!util.isFullscreen()) {
+                        try { util.openFullscreen(); } catch (err) {}
+                    }
+                };
+                window.addEventListener('pointerdown', onGesture, { once: true });
+            }
         }
 
         // Prevent accidental tab/window closing or navigating away
@@ -31,17 +52,6 @@ kioskService.lockApp = async function () {
             };
             window.addEventListener('beforeunload', _beforeUnloadHandler);
         }
-
-        // Trap history navigation (back button)
-        try {
-            window.history.pushState({ appLocked: true }, document.title, window.location.href);
-            if (!_popstateHandler) {
-                _popstateHandler = function () {
-                    window.history.pushState({ appLocked: true }, document.title, window.location.href);
-                };
-                window.addEventListener('popstate', _popstateHandler);
-            }
-        } catch (e) {}
 
         // Lock keyboard if supported (Chromium Fullscreen Keyboard Lock API)
         if (navigator.keyboard && navigator.keyboard.lock) {
@@ -62,18 +72,15 @@ kioskService.lockApp = async function () {
 kioskService.unlockApp = function () {
     // 1. Android Native Unlock
     if (window.AndroidNative && window.AndroidNative.setAppLocked) {
-        window.AndroidNative.setAppLocked(false);
+        try {
+            window.AndroidNative.setAppLocked(false);
+        } catch (e) {}
     }
 
     // 2. Remove Web Kiosk traps
     if (_beforeUnloadHandler) {
         window.removeEventListener('beforeunload', _beforeUnloadHandler);
         _beforeUnloadHandler = null;
-    }
-
-    if (_popstateHandler) {
-        window.removeEventListener('popstate', _popstateHandler);
-        _popstateHandler = null;
     }
 
     if (navigator.keyboard && navigator.keyboard.unlock) {

@@ -388,7 +388,7 @@
                     vueApp.loadGrid(gridData, { continueInputMethods: true, forceReload: true });
                 }
                 if (localStorageService.getAppSettings().syncNavigation) {
-                    if (this.updatedMetadataDoc && this.updatedMetadataDoc.lastOpenedGridId !== vueApp.renderGridData.id) {
+                    if (this.updatedMetadataDoc && this.updatedMetadataDoc.lastOpenedGridId && vueApp.renderGridData && this.updatedMetadataDoc.lastOpenedGridId !== vueApp.renderGridData.id && this.updatedMetadataDoc.lastOpenedGridId !== this.gridId) {
                         dataService.getGrid(this.updatedMetadataDoc.lastOpenedGridId).then(toGrid => {
                             if (!gridUtil.hasOutdatedThumbnail(toGrid)) {
                                 Router.toLastOpenedGrid();
@@ -398,16 +398,19 @@
                     }
                     if (this.updatedMetadataDoc && this.updatedMetadataDoc.fullscreen !== vueApp.metadata.fullscreen) {
                         if (this.updatedMetadataDoc.fullscreen) {
-                            systemActionService.enterFullscreen(true);
+                            vueApp.metadata.fullscreen = true;
                         } else {
+                            vueApp.metadata.fullscreen = false;
                             $(document).trigger(constants.EVENT_SIDEBAR_OPEN);
                         }
                     }
                     if (this.updatedMetadataDoc && this.updatedMetadataDoc.locked !== vueApp.metadata.locked) {
                         if (this.updatedMetadataDoc.locked) {
-                            vueApp.lock();
+                            vueApp.metadata.locked = true;
+                            vueApp.setViewPropsLocked();
                         } else {
-                            vueApp.unlock(true);
+                            vueApp.metadata.locked = false;
+                            vueApp.setViewPropsUnlocked();
                         }
                     }
                 }
@@ -524,21 +527,13 @@
             let metadata = JSON.parse(JSON.stringify(savedMetadata || new MetaData()));
             metadata.lastOpenedGridId = this.gridId;
             metadata.locked = !!(metadata.locked || urlParamService.isLocked(true));
-            metadata.fullscreen = !!(metadata.fullscreen || urlParamService.isFullscreen(true));
-
-            if (metadata.fullscreen) {
-                systemActionService.enterFullscreen(true);
-            }
-
-            if (metadata.locked) {
-                this.setViewPropsLocked();
-            }
+            metadata.fullscreen = !!(metadata.fullscreen && util.isFullscreen());
 
             metadata.inputConfig.scanEnabled = urlParamService.isScanningEnabled() ? true : metadata.inputConfig.scanEnabled;
             metadata.inputConfig.dirEnabled = urlParamService.isDirectionEnabled() ? true : metadata.inputConfig.dirEnabled;
             metadata.inputConfig.huffEnabled = urlParamService.isHuffmanEnabled() ? true : metadata.inputConfig.huffEnabled;
-            dataService.saveMetadata(metadata);
             this.metadata = metadata;
+
             this.globalGridData = await dataService.getGlobalGrid();
             let gridData = await dataService.getGrid(this.gridId, false, true);
             if (!gridData) {
@@ -552,25 +547,36 @@
             }
             await this.loadGrid(gridData);
 
+            if (this.metadata.locked) {
+                this.setViewPropsLocked();
+            }
+
             if (!window.__appStartupHandled) {
                 window.__appStartupHandled = true;
-                let appSettings = localStorageService.getAppSettings();
+                let appSettings = localStorageService.getAppSettings() || {};
                 let autoLock = !!appSettings.autoLockOnStartup;
                 let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
 
-                if (autoLock || autoFullscreen) {
-                    setTimeout(() => {
-                        if (autoLock && vueApp) {
-                            vueApp.lock();
-                        }
-                        if (autoFullscreen && vueApp) {
-                            setTimeout(() => {
-                                vueApp.metadata.fullscreen = true;
-                                systemActionService.enterFullscreen();
-                                $(document).trigger(constants.EVENT_GRID_RESIZE);
-                            }, 150);
-                        }
-                    }, 250);
+                if (autoLock && !this.metadata.locked) {
+                    this.metadata.locked = true;
+                    this.unlockCounter = UNLOCK_COUNT;
+                    this.setViewPropsLocked();
+                }
+
+                if (autoFullscreen) {
+                    this.metadata.fullscreen = true;
+                    if (!util.isFullscreen()) {
+                        try {
+                            let p = util.openFullscreen();
+                            if (p && p.catch) p.catch(() => {});
+                        } catch (e) {}
+                        const onFirstInteraction = () => {
+                            if (!util.isFullscreen()) {
+                                try { util.openFullscreen(); } catch (err) {}
+                            }
+                        };
+                        window.addEventListener('pointerdown', onFirstInteraction, { once: true });
+                    }
                 }
             }
         }
