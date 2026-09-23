@@ -88,6 +88,7 @@
     import { predictionService } from '../../js/service/predictionService';
     import { liveElementService } from '../../js/service/liveElementService';
     import { GridElement } from '../../js/model/GridElement';
+    import { kioskService } from '../../js/service/kioskService';
 
     let vueApp = null;
     let UNLOCK_COUNT = 8;
@@ -173,9 +174,7 @@
                 $(document).trigger(constants.EVENT_SIDEBAR_CLOSE);
                 $(document).trigger(constants.EVENT_UI_LOCKED);
 
-                if (window.AndroidNative && window.AndroidNative.setAppLocked) {
-                    window.AndroidNative.setAppLocked(true);
-                }
+                kioskService.lockApp();
 
                 // prevent zoom
                 $('#viewPortMeta').attr('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
@@ -185,9 +184,7 @@
                 $(document).trigger(constants.EVENT_SIDEBAR_OPEN);
                 $(document).trigger(constants.EVENT_UI_UNLOCKED);
 
-                if (window.AndroidNative && window.AndroidNative.setAppLocked) {
-                    window.AndroidNative.setAppLocked(false);
-                }
+                kioskService.unlockApp();
 
                 //enable zoom
                 $('#viewPortMeta').attr('content', 'width=device-width, initial-scale=1');

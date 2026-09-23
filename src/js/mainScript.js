@@ -16,6 +16,7 @@ import { printService } from './service/printService';
 import { notificationService } from './service/notificationService.js';
 import { dataService } from './service/data/dataService';
 import { consoleReService } from './service/consoleReService';
+import { powerManagementService } from './service/powerManagementService';
 
 let SERVICE_WORKER_UPDATE_CHECK_INTERVAL = 1000 * 60 * 15; // 15 Minutes
 
@@ -35,6 +36,7 @@ async function init() {
     VuePluginManager.init();
     keyboardShortcuts.init();
     notificationService.init();
+    powerManagementService.init();
     await MainVue.init();
     let lastActiveUser = localStorageService.getLastActiveUser();
     let autologinUser = localStorageService.getAutologinUser();

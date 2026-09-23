@@ -17,6 +17,9 @@ class SettingsApp {
         this.externalSpeechServiceUrl = settings.externalSpeechServiceUrl;
         this.autoLockOnStartup = settings.autoLockOnStartup !== undefined ? !!settings.autoLockOnStartup : false;
         this.autoFullscreenOnStartup = settings.autoFullscreenOnStartup !== undefined ? !!settings.autoFullscreenOnStartup : false;
+        this.pinAppOnLock = settings.pinAppOnLock !== undefined ? !!settings.pinAppOnLock : false;
+        this.dimTimeout = settings.dimTimeout !== undefined ? settings.dimTimeout : 60;
+        this.sleepTimeout = settings.sleepTimeout !== undefined ? settings.sleepTimeout : 180;
 
         convertServiceLocal.updateDataModel(this);
     }

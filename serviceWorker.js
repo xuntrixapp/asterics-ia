@@ -40,7 +40,7 @@ if (self.URLS_TO_CACHE && self.URLS_TO_CACHE.length > 0) {
     // Since we don't have a build tool generating hashes use the version constant
     const precacheManifest = self.URLS_TO_CACHE.map(url => ({
         url: url,
-        revision: 'v012-power-saving-fix'
+        revision: 'v013-pwa-kiosk-universal'
     }));
 
     workbox.precaching.precacheAndRoute(precacheManifest);

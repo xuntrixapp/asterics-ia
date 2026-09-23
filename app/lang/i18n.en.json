@@ -1341,6 +1341,7 @@
   "startupHeading": "Startup",
   "autoLockOnStartup": "Automatically lock screen on startup",
   "autoFullscreenOnStartup": "Automatically start in fullscreen",
+  "pinAppOnLock": "Pin application (Kiosk Mode / prevent exiting)",
   "powerSavingHeading": "Power Saving",
   "dimScreenTimeout": "Dim screen on inactivity",
   "sleepScreenTimeout": "Sleep screen on inactivity",

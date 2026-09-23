@@ -51,13 +51,17 @@
                     <input id="chkAutoFullscreen" type="checkbox" v-model="appSettings.autoFullscreenOnStartup" @change="saveAppSettings(appSettings)"/>
                     <label for="chkAutoFullscreen">{{ $t('autoFullscreenOnStartup') }}</label>
                 </div>
+                <div class="srow">
+                    <input id="chkPinApp" type="checkbox" v-model="appSettings.pinAppOnLock" @change="saveAppSettings(appSettings)"/>
+                    <label for="chkPinApp">{{ $t('pinAppOnLock') }}</label>
+                </div>
                 <div class="srow" v-if="isAndroid">
                     <input id="chkDefaultLauncher" type="checkbox" :checked="isDefaultLauncher" @click.prevent="toggleDefaultLauncher"/>
                     <label for="chkDefaultLauncher" @click.prevent="toggleDefaultLauncher">{{ $t('setAsDefaultLauncher') }}</label>
                 </div>
             </div>
         </div>
-        <div class="srow" v-if="isAndroid">
+        <div class="srow">
             <div class="eleven columns">
                 <h3>{{ $t('powerSavingHeading') }}</h3>
                 <div class="srow">
@@ -99,6 +103,7 @@
     import Accordion from "../../components/accordion.vue";
     import SliderInput from '../../modals/input/sliderInput.vue';
     import { settingsSaveMixin } from './settingsSaveMixin';
+    import { powerManagementService } from '../../../js/service/powerManagementService';
 
     export default {
         components: { SliderInput, Accordion},
@@ -116,9 +121,10 @@
         },
         methods: {
             updatePowerSettings() {
-                if (window.AndroidNative && window.AndroidNative.setPowerSettings) {
-                    window.AndroidNative.setPowerSettings(this.dimTimeout, this.sleepTimeout);
-                }
+                this.appSettings.dimTimeout = this.dimTimeout;
+                this.appSettings.sleepTimeout = this.sleepTimeout;
+                this.saveAppSettings(this.appSettings);
+                powerManagementService.setSettings(this.dimTimeout, this.sleepTimeout);
             },
             openHomeSettings() {
                 if (window.AndroidNative && window.AndroidNative.openHomeSettings) {
@@ -139,6 +145,9 @@
             }
         },
         async mounted() {
+            this.dimTimeout = powerManagementService.getDimTimeout();
+            this.sleepTimeout = powerManagementService.getSleepTimeout();
+
             if (window.AndroidNative) {
                 if (window.AndroidNative.getDimTimeoutSeconds) {
                     this.dimTimeout = window.AndroidNative.getDimTimeoutSeconds();

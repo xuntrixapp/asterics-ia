@@ -1338,5 +1338,19 @@
   "showAllElements": "Alle Elemente anzeigen",
   "firstRowHeightFactor": "Faktor für Höhe der ersten Zeile",
   "downloadingImagesWithPercent": "Bilder werden heruntergeladen ... {0}%",
-  "browserNotSupportingOfflineMode": "Der Browser unterstützt keinen Offline-Modus. Wenn Sie ihn benötigen, verwenden Sie einen anderen oder aktuelleren Browser."
+  "browserNotSupportingOfflineMode": "Der Browser unterstützt keinen Offline-Modus. Wenn Sie ihn benötigen, verwenden Sie einen anderen oder aktuelleren Browser.",
+  "startupHeading": "Start",
+  "autoLockOnStartup": "Bildschirm beim Start automatisch sperren",
+  "autoFullscreenOnStartup": "Automatisch im Vollbildmodus starten",
+  "pinAppOnLock": "App fixieren (Kiosk-Modus / Beenden verhindern)",
+  "powerSavingHeading": "Energiesparmodus",
+  "dimScreenTimeout": "Bildschirm bei Inaktivität abdunkeln",
+  "sleepScreenTimeout": "Bildschirm bei Inaktivität ausschalten",
+  "setAsDefaultLauncher": "Als Standard-Startbildschirm festlegen",
+  "seconds": "Sekunden",
+  "minute": "Minute",
+  "minutes": "Minuten",
+  "never": "Nie",
+  "statusActive": "Aktiv",
+  "statusInactive": "Inaktiv"
 }
