@@ -58,6 +58,12 @@ dataService.getGlobalGrid = function (alsoReturnIfDeactivated) {
             return Promise.resolve(null);
         }
         return dataService.getGrid(metadata.globalGridId).then((globalGrid) => {
+            if (globalGrid) {
+                let added = gridUtil.ensureFullscreenButton(globalGrid);
+                if (added) {
+                    dataService.saveGrid(globalGrid);
+                }
+            }
             return Promise.resolve(globalGrid);
         });
     });

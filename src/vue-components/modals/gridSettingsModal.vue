@@ -20,6 +20,22 @@
                             <label for="gridCols" class="seven columns">{{ $t('minimumNumberOfColumns') }}</label>
                             <input id="gridCols" type="number" class="three columns" v-model.number="gridData.minColumnCount" min="1" :max="gridLayoutUtil.MAX_GRID_SIZE"/>
                         </div>
+                        <h2>{{ $t('boardBackgroundImage') }}</h2>
+                        <div class="srow mb-5">
+                            <span class="four columns" style="font-weight: bold;">{{ $t('image') }}</span>
+                            <label for="bgImageInput" class="three columns button" style="margin-bottom: 0; text-align: center; cursor: pointer;">
+                                <i class="fas fa-file-upload"/> <span>{{ $t('chooseFile') }}</span>
+                            </label>
+                            <input type="file" ref="bgImageFileInput" id="bgImageInput" style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;" @change="onBgImageSelected" accept="image/png, image/jpeg, image/webp, image/svg+xml, image/gif"/>
+                            <button type="button" class="three columns" :disabled="!gridData.backgroundImage" @click="clearBgImage()">
+                                <i class="fas fa-times"/> <span>{{ $t('clear') }}</span>
+                            </button>
+                        </div>
+                        <div class="srow" v-if="gridData.backgroundImage" style="display: flex; justify-content: center; align-items: center; margin-top: 0.5em;">
+                            <div style="border: 1px solid #dcdcdc; border-radius: 4px; padding: 4px; background: #f8f9fa;">
+                                <img :src="gridData.backgroundImage" style="max-width: 140px; max-height: 85px; display: block; object-fit: contain;" alt="Preview"/>
+                            </div>
+                        </div>
                         <div v-if="!isGlobalGrid">
                             <h2>{{ $t('globalGrid') }}</h2>
                             <div class="srow">
@@ -72,6 +88,7 @@
     import {dataService} from "../../js/service/data/dataService";
     import { gridLayoutUtil } from '../grid-layout/utils/gridLayoutUtil';
     import { gridUtil } from '../../js/util/gridUtil';
+    import { imageUtil } from '../../js/util/imageUtil';
     import { i18nService } from '../../js/service/i18nService';
     import { GridData } from '../../js/model/GridData';
 
@@ -100,6 +117,28 @@
                     this.$emit('reload');
                     this.$emit('close');
                 });
+            },
+            triggerFileInput() {
+                if (this.$refs.bgImageFileInput) {
+                    this.$refs.bgImageFileInput.click();
+                }
+            },
+            async onBgImageSelected(event) {
+                let file = event.target.files && event.target.files[0];
+                if (!file) {
+                    return;
+                }
+                let base64 = await imageUtil.getBase64FromInput(event.target);
+                if (base64) {
+                    let compressed = await imageUtil.compressToSize(base64, 1920, 1024).catch(() => base64);
+                    this.$set(this.gridData, 'backgroundImage', compressed || base64);
+                }
+            },
+            clearBgImage() {
+                this.$set(this.gridData, 'backgroundImage', null);
+                if (this.$refs.bgImageFileInput) {
+                    this.$refs.bgImageFileInput.value = '';
+                }
             }
         },
         async mounted() {

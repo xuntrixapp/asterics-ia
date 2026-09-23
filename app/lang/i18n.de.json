@@ -1162,6 +1162,7 @@
   "SYS_VOLUME_TOGGLE_MUTE": "Systemlautstärke umschalten",
   "SYS_ENTER_FULLSCREEN": "In den Vollbildmodus wechseln",
   "SYS_LEAVE_FULLSCREEN": "Vollbildmodus beenden",
+  "SYS_TOGGLE_FULLSCREEN": "Vollbildmodus umschalten",
   "SYS_UPDATE_LIVE_ELEMENTS": "Live-Elemente aktualisieren",
   "defaultDeviceVoice": "Standard-Gerätesprache",
   "fundedBy": "gefördert von der",

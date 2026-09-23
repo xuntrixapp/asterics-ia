@@ -15,6 +15,8 @@ class SettingsApp {
         this.unlockPasscode = settings.unlockPasscode;
         this.syncNavigation = settings.syncNavigation;
         this.externalSpeechServiceUrl = settings.externalSpeechServiceUrl;
+        this.autoLockOnStartup = settings.autoLockOnStartup !== undefined ? !!settings.autoLockOnStartup : false;
+        this.autoFullscreenOnStartup = settings.autoFullscreenOnStartup !== undefined ? !!settings.autoFullscreenOnStartup : false;
 
         convertServiceLocal.updateDataModel(this);
     }

@@ -32,12 +32,15 @@ self.__WB_DISABLE_DEV_LOGS = true;
     debug: true
 });*/
 
+self.skipWaiting();
+workbox.core.clientsClaim();
+
 if (self.URLS_TO_CACHE && self.URLS_TO_CACHE.length > 0) {
     // map the strings to the format Workbox expects: { url: '...', revision: '...' }
     // Since we don't have a build tool generating hashes use the version constant
     const precacheManifest = self.URLS_TO_CACHE.map(url => ({
         url: url,
-        revision: '#ASTERICS_GRID_VERSION#'
+        revision: 'v012-power-saving-fix'
     }));
 
     workbox.precaching.precacheAndRoute(precacheManifest);

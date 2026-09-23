@@ -41,6 +41,49 @@
             </div>
         </div>
         <div class="srow">
+            <div class="eleven columns">
+                <h3 class="mt-2">{{ $t('startupHeading') }}</h3>
+                <div class="srow">
+                    <input id="chkAutoLock" type="checkbox" v-model="appSettings.autoLockOnStartup" @change="saveAppSettings(appSettings)"/>
+                    <label for="chkAutoLock">{{ $t('autoLockOnStartup') }}</label>
+                </div>
+                <div class="srow">
+                    <input id="chkAutoFullscreen" type="checkbox" v-model="appSettings.autoFullscreenOnStartup" @change="saveAppSettings(appSettings)"/>
+                    <label for="chkAutoFullscreen">{{ $t('autoFullscreenOnStartup') }}</label>
+                </div>
+                <div class="srow" v-if="isAndroid">
+                    <input id="chkDefaultLauncher" type="checkbox" :checked="isDefaultLauncher" @click.prevent="toggleDefaultLauncher"/>
+                    <label for="chkDefaultLauncher" @click.prevent="toggleDefaultLauncher">{{ $t('setAsDefaultLauncher') }}</label>
+                </div>
+            </div>
+        </div>
+        <div class="srow" v-if="isAndroid">
+            <div class="eleven columns">
+                <h3>{{ $t('powerSavingHeading') }}</h3>
+                <div class="srow">
+                    <label class="five columns" for="dimTimeout">{{ $t('dimScreenTimeout') }}</label>
+                    <select class="four columns" id="dimTimeout" v-model.number="dimTimeout" @change="updatePowerSettings">
+                        <option :value="0">{{ $t('never') }}</option>
+                        <option :value="30">30 {{ $t('seconds') }}</option>
+                        <option :value="60">1 {{ $t('minute') }}</option>
+                        <option :value="120">2 {{ $t('minutes') }}</option>
+                        <option :value="300">5 {{ $t('minutes') }}</option>
+                    </select>
+                </div>
+                <div class="srow">
+                    <label class="five columns" for="sleepTimeout">{{ $t('sleepScreenTimeout') }}</label>
+                    <select class="four columns" id="sleepTimeout" v-model.number="sleepTimeout" @change="updatePowerSettings">
+                        <option :value="0">{{ $t('never') }}</option>
+                        <option :value="30">30 {{ $t('seconds') }}</option>
+                        <option :value="60">1 {{ $t('minute') }}</option>
+                        <option :value="180">3 {{ $t('minutes') }}</option>
+                        <option :value="300">5 {{ $t('minutes') }}</option>
+                        <option :value="600">10 {{ $t('minutes') }}</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="srow">
             <accordion :acc-label="$t('advancedGeneralSettings')" class="eleven columns">
                 <div class="srow">
                     <input id="chkSyncNavigation" type="checkbox" v-model="appSettings.syncNavigation" @change="saveAppSettings(appSettings)"/>
@@ -64,12 +107,65 @@
         data() {
             return {
                 appLanguages: i18nService.getAppLanguages(),
-                allLanguages: i18nService.getAllLanguages()
+                allLanguages: i18nService.getAllLanguages(),
+                isAndroid: !!(window.AndroidNative),
+                dimTimeout: 60,
+                sleepTimeout: 180,
+                isDefaultLauncher: false
             }
         },
         methods: {
+            updatePowerSettings() {
+                if (window.AndroidNative && window.AndroidNative.setPowerSettings) {
+                    window.AndroidNative.setPowerSettings(this.dimTimeout, this.sleepTimeout);
+                }
+            },
+            openHomeSettings() {
+                if (window.AndroidNative && window.AndroidNative.openHomeSettings) {
+                    window.AndroidNative.openHomeSettings();
+                }
+            },
+            checkDefaultLauncherStatus() {
+                if (window.AndroidNative && window.AndroidNative.isDefaultLauncher) {
+                    try {
+                        this.isDefaultLauncher = !!window.AndroidNative.isDefaultLauncher();
+                    } catch (e) {
+                        this.isDefaultLauncher = false;
+                    }
+                }
+            },
+            toggleDefaultLauncher() {
+                this.openHomeSettings();
+            }
         },
         async mounted() {
+            if (window.AndroidNative) {
+                if (window.AndroidNative.getDimTimeoutSeconds) {
+                    this.dimTimeout = window.AndroidNative.getDimTimeoutSeconds();
+                }
+                if (window.AndroidNative.getSleepTimeoutSeconds) {
+                    this.sleepTimeout = window.AndroidNative.getSleepTimeoutSeconds();
+                }
+                this.checkDefaultLauncherStatus();
+                this._onVisibilityChange = () => {
+                    if (!document.hidden) {
+                        this.checkDefaultLauncherStatus();
+                    }
+                };
+                this._onWindowFocus = () => {
+                    this.checkDefaultLauncherStatus();
+                };
+                document.addEventListener('visibilitychange', this._onVisibilityChange);
+                window.addEventListener('focus', this._onWindowFocus);
+            }
+        },
+        beforeDestroy() {
+            if (this._onVisibilityChange) {
+                document.removeEventListener('visibilitychange', this._onVisibilityChange);
+            }
+            if (this._onWindowFocus) {
+                window.removeEventListener('focus', this._onWindowFocus);
+            }
         }
     }
 </script>

@@ -79,12 +79,12 @@ constants.DB_SYNC_STATE_STOPPED = 'DB_SYNC_STATE_STOPPED';
 constants.DB_SYNC_STATE_FAIL = 'DB_SYNC_STATE_FAIL';
 constants.DB_SYNC_STATE_ONLINEONLY = 'DB_SYNC_STATE_ONLINEONLY';
 
-constants.ENVIRONMENT = '#ASTERICS_GRID_ENV#';
-constants.IS_ENVIRONMENT_DEV = constants.ENVIRONMENT === '#ASTERICS_' + 'GRID_ENV#';
-constants.IS_ENVIRONMENT_BETA = constants.ENVIRONMENT === 'BETA';
-constants.IS_ENVIRONMENT_PROD = !constants.IS_ENVIRONMENT_DEV && !constants.IS_ENVIRONMENT_BETA;
-constants.FORCE_USE_SW = false;
-constants.FORCE_CONNECT_DB = false;
+constants.ENVIRONMENT = 'PROD';
+constants.IS_ENVIRONMENT_DEV = false;
+constants.IS_ENVIRONMENT_BETA = false;
+constants.IS_ENVIRONMENT_PROD = true;
+constants.FORCE_USE_SW = true;
+constants.FORCE_CONNECT_DB = true;
 constants.ENABLE_REMOTE_DEBUGGING = false;
 constants.CURRENT_VERSION = '#ASTERICS_GRID_VERSION#';
 constants.IS_FIREFOX = navigator.userAgent.indexOf('Firefox') !== -1;

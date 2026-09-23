@@ -4,7 +4,7 @@
             <header-icon class="left" v-show="!metadata.locked"></header-icon>
             <div class="btn-group left">
                 <button tabindex="30" v-show="!metadata.locked" @click="toEditGrid()" class="spaced small" :aria-label="$t('editingOn')"><i class="fas fa-pencil-alt"/> <span class="hide-mobile">{{ $t('editingOn') }}</span></button>
-                <button tabindex="31" id="inputConfigButton" v-show="!metadata.locked" class="small" :aria-label="$t('inputOptions')"><i class="fas fa-cog"></i> <span class="hide-mobile">{{ $t('inputOptions') }}</span></button>
+                <button tabindex="31" id="inputConfigButton" v-show="!metadata.locked" @click="openInputConfigMenu($event)" class="small" :aria-label="$t('inputOptions')"><i class="fas fa-cog"></i> <span class="hide-mobile">{{ $t('inputOptions') }}</span></button>
                 <div id="inputConfigMenu"></div>
             </div>
             <button tabindex="34" v-show="metadata.locked" @click="unlock()" class="small" :aria-label="$t('unlock')">
@@ -173,6 +173,10 @@
                 $(document).trigger(constants.EVENT_SIDEBAR_CLOSE);
                 $(document).trigger(constants.EVENT_UI_LOCKED);
 
+                if (window.AndroidNative && window.AndroidNative.setAppLocked) {
+                    window.AndroidNative.setAppLocked(true);
+                }
+
                 // prevent zoom
                 $('#viewPortMeta').attr('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
                 $('#gridView').on('touchmove', this.preventZoomHandler);
@@ -180,6 +184,10 @@
             setViewPropsUnlocked() {
                 $(document).trigger(constants.EVENT_SIDEBAR_OPEN);
                 $(document).trigger(constants.EVENT_UI_UNLOCKED);
+
+                if (window.AndroidNative && window.AndroidNative.setAppLocked) {
+                    window.AndroidNative.setAppLocked(false);
+                }
 
                 //enable zoom
                 $('#viewPortMeta').attr('content', 'width=device-width, initial-scale=1');
@@ -348,6 +356,13 @@
             toEditGrid() {
                 Router.toEditGrid(this.renderGridData.id);
             },
+            openInputConfigMenu(event) {
+                if (event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
+                $('#inputConfigButton').contextMenu();
+            },
             toLogin() {
                 Router.toLogin();
             },
@@ -511,22 +526,21 @@
             let savedMetadata = await dataService.getMetadata();
             let metadata = JSON.parse(JSON.stringify(savedMetadata || new MetaData()));
             metadata.lastOpenedGridId = this.gridId;
-            metadata.locked = metadata.locked === undefined ? urlParamService.isDemoMode() && dataService.getCurrentUser() === constants.LOCAL_DEMO_USERNAME : metadata.locked;
-            if (metadata.locked) {
-                $(document).trigger(constants.EVENT_UI_LOCKED);
+            metadata.locked = !!(metadata.locked || urlParamService.isLocked(true));
+            metadata.fullscreen = !!(metadata.fullscreen || urlParamService.isFullscreen(true));
+
+            if (metadata.fullscreen) {
+                systemActionService.enterFullscreen(true);
             }
-            metadata.fullscreen = metadata.fullscreen === undefined ? urlParamService.isDemoMode() && dataService.getCurrentUser() === constants.LOCAL_DEMO_USERNAME : metadata.fullscreen;
-            metadata.fullscreen = urlParamService.isFullscreen(true) ? true : metadata.fullscreen;
-            metadata.fullscreen = metadata.fullscreen && util.isFullscreen();
-            metadata.locked = urlParamService.isLocked(true) ? true : metadata.locked;
+
+            if (metadata.locked) {
+                this.setViewPropsLocked();
+            }
+
             metadata.inputConfig.scanEnabled = urlParamService.isScanningEnabled() ? true : metadata.inputConfig.scanEnabled;
             metadata.inputConfig.dirEnabled = urlParamService.isDirectionEnabled() ? true : metadata.inputConfig.dirEnabled;
             metadata.inputConfig.huffEnabled = urlParamService.isHuffmanEnabled() ? true : metadata.inputConfig.huffEnabled;
-            dataService.saveMetadata(metadata).then(() => {
-                if (metadata.locked) {
-                    this.setViewPropsLocked();
-                }
-            });
+            dataService.saveMetadata(metadata);
             this.metadata = metadata;
             this.globalGridData = await dataService.getGlobalGrid();
             let gridData = await dataService.getGrid(this.gridId, false, true);
@@ -539,7 +553,29 @@
                     return Router.toManageGrids();
                 }
             }
-            this.loadGrid(gridData);
+            await this.loadGrid(gridData);
+
+            if (!window.__appStartupHandled) {
+                window.__appStartupHandled = true;
+                let appSettings = localStorageService.getAppSettings();
+                let autoLock = !!appSettings.autoLockOnStartup;
+                let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
+
+                if (autoLock || autoFullscreen) {
+                    setTimeout(() => {
+                        if (autoLock && vueApp) {
+                            vueApp.lock();
+                        }
+                        if (autoFullscreen && vueApp) {
+                            setTimeout(() => {
+                                vueApp.metadata.fullscreen = true;
+                                systemActionService.enterFullscreen();
+                                $(document).trigger(constants.EVENT_GRID_RESIZE);
+                            }, 150);
+                        }
+                    }, 250);
+                }
+            }
         }
     };
 

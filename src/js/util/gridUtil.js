@@ -8,6 +8,7 @@ import { GridData } from '../model/GridData';
 import { GridElementCollect } from '../model/GridElementCollect.js';
 import { constants } from './constants.js';
 import { GridActionARE } from '../model/GridActionARE';
+import { GridActionSystem } from '../model/GridActionSystem';
 import { encryptionService } from '../service/data/encryptionService';
 import { gridLayoutUtil } from '../../vue-components/grid-layout/utils/gridLayoutUtil';
 import { localStorageService } from '../service/data/localStorageService';
@@ -192,18 +193,79 @@ gridUtil.generateGlobalGrid = function (locale, options) {
         }),
         actions: [new GridActionCollectElement({ action: GridActionCollectElement.COLLECT_ACTION_CLEAR })]
     });
+    let elementFullscreen = new GridElement({
+        width: 1,
+        height: 1,
+        x: 5 + elementCollect.width,
+        y: 0,
+        image: new GridImage({
+            author: constants.ARASAAC_AUTHOR,
+            authorURL: constants.ARASAAC_LICENSE_URL,
+            url: 'https://api.arasaac.org/api/pictograms/39465?download=false&plural=false&color=true'
+        }),
+        actions: [new GridActionSystem({ action: GridActionSystem.actions.SYS_TOGGLE_FULLSCREEN })]
+    });
     let elementPlaceholder = new GridElement({
         type: GridElement.ELEMENT_TYPE_DYNAMIC_GRID_PLACEHOLDER,
-        width: 15,
+        width: 16,
         height: 5,
         x: 0,
         y: 1
     });
     return new GridData({
         label: i18nService.getTranslationObject(i18nService.t('globalGrid'), locale),
-        gridElements: [elementHome, elementBack, elementCollect, elementSpeak, elementBackspace, elementClear, elementPlaceholder],
+        gridElements: [elementHome, elementBack, elementCollect, elementSpeak, elementBackspace, elementClear, elementFullscreen, elementPlaceholder],
         rowCount: 6
     });
+};
+
+gridUtil.hasFullscreenButton = function (globalGrid) {
+    if (!globalGrid || !globalGrid.gridElements) return false;
+    return globalGrid.gridElements.some(el => {
+        if (!el.actions || !Array.isArray(el.actions)) return false;
+        return el.actions.some(act =>
+            act && (
+                act.action === GridActionSystem.actions.SYS_TOGGLE_FULLSCREEN ||
+                act.action === GridActionSystem.actions.SYS_ENTER_FULLSCREEN ||
+                act.action === GridActionSystem.actions.SYS_LEAVE_FULLSCREEN
+            )
+        );
+    });
+};
+
+gridUtil.ensureFullscreenButton = function (globalGrid) {
+    if (!globalGrid || !globalGrid.gridElements || gridUtil.hasFullscreenButton(globalGrid)) {
+        return false;
+    }
+    let topRowElements = globalGrid.gridElements.filter(el => el.y === 0 && el.type !== GridElement.ELEMENT_TYPE_DYNAMIC_GRID_PLACEHOLDER);
+    let nextX = 0;
+    topRowElements.forEach(el => {
+        let rightEdge = (el.x || 0) + (el.width || 1);
+        if (rightEdge > nextX) {
+            nextX = rightEdge;
+        }
+    });
+
+    let elementFullscreen = new GridElement({
+        width: 1,
+        height: 1,
+        x: nextX,
+        y: 0,
+        image: new GridImage({
+            author: constants.ARASAAC_AUTHOR,
+            authorURL: constants.ARASAAC_LICENSE_URL,
+            url: 'https://api.arasaac.org/api/pictograms/39465?download=false&plural=false&color=true'
+        }),
+        actions: [new GridActionSystem({ action: GridActionSystem.actions.SYS_TOGGLE_FULLSCREEN })]
+    });
+
+    globalGrid.gridElements.push(elementFullscreen);
+
+    let placeholder = globalGrid.gridElements.find(el => el.type === GridElement.ELEMENT_TYPE_DYNAMIC_GRID_PLACEHOLDER);
+    if (placeholder && placeholder.width <= nextX) {
+        placeholder.width = nextX + 1;
+    }
+    return true;
 };
 
 /**
@@ -827,6 +889,10 @@ gridUtil.getCursorType = function(metadata, defaultCursorType = "default") {
  */
 gridUtil.getElemBackgroundCss = function(elem, childGrid = {}, globalGrid, defaultBackground = '') {
     let fromGlobal = globalGrid && !!globalGrid.gridElements.find(e => e.id === elem.id);
+    let targetGrid = fromGlobal ? globalGrid : childGrid;
+    if (targetGrid && targetGrid.backgroundImage) {
+        return '';
+    }
     let backgroundColor = fromGlobal ? globalGrid.backgroundColor : childGrid.backgroundColor;
     backgroundColor = backgroundColor || defaultBackground || constants.DEFAULT_GRID_BACKGROUND_COLOR;
     return backgroundColor ? `background-color: ${backgroundColor};` : '';

@@ -93,6 +93,13 @@ async function doActions(gridElement, gridId) {
         if (b.modelName === GridActionChangeLang.getModelName() && a.modelName === GridActionNavigate.getModelName()) {
             return 1;
         }
+        // do speak before navigation
+        if ((a.modelName === GridActionSpeak.getModelName() || a.modelName === GridActionSpeakCustom.getModelName()) && b.modelName === GridActionNavigate.getModelName()) {
+            return -1;
+        }
+        if ((b.modelName === GridActionSpeak.getModelName() || b.modelName === GridActionSpeakCustom.getModelName()) && a.modelName === GridActionNavigate.getModelName()) {
+            return 1;
+        }
         if (a.modelName === GridActionSystem.getModelName()) { // do system actions first (e.g. set volume)
             return -1;
         }
@@ -156,7 +163,7 @@ async function doAction(gridElement, action, options = {}) {
             if (gridElement.type === GridElement.ELEMENT_TYPE_LIVE) {
                 speakTexts[i18nService.getContentLang()] = liveElementService.getLastValue(gridElement.id);
             }
-            speechService.speak(speakTexts, {
+            await speechService.speak(speakTexts, {
                 lang: action.speakLanguage,
                 speakSecondary: true
             });
@@ -168,7 +175,7 @@ async function doAction(gridElement, action, options = {}) {
                 if (gridElement.type === GridElement.ELEMENT_TYPE_LIVE) {
                     text[i18nService.getContentLang()] = liveElementService.replacePlaceholder(gridElement, text[i18nService.getContentLang()]);
                 }
-                speechService.speak(text, {
+                await speechService.speak(text, {
                     lang: action.speakLanguage,
                     speakSecondary: true
                 });

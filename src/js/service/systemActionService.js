@@ -38,6 +38,9 @@ systemActionService.doAction = async function(action) {
         case GridActionSystem.actions.SYS_LEAVE_FULLSCREEN:
             await systemActionService.exitFullscreen();
             break;
+        case GridActionSystem.actions.SYS_TOGGLE_FULLSCREEN:
+            await systemActionService.toggleFullscreen();
+            break;
         case GridActionSystem.actions.SYS_UPDATE_LIVE_ELEMENTS:
             let delay = action.actionValue || 0;
             setTimeout(() => {
@@ -54,6 +57,7 @@ systemActionService.enterFullscreen = async function(dontSave) {
     if (!dontSave) {
         await dataService.saveMetadata(metadata);
     }
+    $(document).trigger(constants.EVENT_METADATA_UPDATED);
     $(document).trigger(constants.EVENT_SIDEBAR_CLOSE);
 }
 
@@ -70,6 +74,14 @@ systemActionService.exitFullscreen = async function() {
     setTimeout(() => {
         $(document).trigger(constants.EVENT_GRID_RESIZE);
     }, 200);
+};
+
+systemActionService.toggleFullscreen = async function() {
+    if (util.isFullscreen()) {
+        await systemActionService.exitFullscreen();
+    } else {
+        await systemActionService.enterFullscreen();
+    }
 };
 
 function notifyVolume(volume) {

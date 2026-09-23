@@ -103,7 +103,22 @@ speechService.speak = async function (textOrOject, options = {}) {
     let nativeVoices = voices.filter((voice) => voice.type === constants.VOICE_TYPE_NATIVE);
     let responsiveVoices = voices.filter((voice) => voice.type === constants.VOICE_TYPE_RESPONSIVEVOICE);
     let externalVoices = voices.filter((voice) => voice.type === constants.VOICE_TYPE_EXTERNAL_PLAYING || voice.type === constants.VOICE_TYPE_EXTERNAL_DATA);
-    if (speechService.nativeSpeechSupported() && nativeVoices.length > 0) {
+    if (window.AndroidTTS && window.AndroidTTS.isAvailable && window.AndroidTTS.isAvailable()) {
+        let isSelectedVoice = nativeVoices.length > 0 && nativeVoices[0].id === preferredVoiceId;
+        let pitch = isSelectedVoice && !options.useStandardRatePitch ? _voicePitch : 1;
+        let rate = options.rate || (isSelectedVoice && !options.useStandardRatePitch ? _voiceRate : 1);
+        let lang = nativeVoices.length > 0 ? (nativeVoices[0].langFull || nativeVoices[0].lang) : (langToUse || 'es-ES');
+        if (options.progressFn) {
+            let onEnd = () => {
+                window.removeEventListener('androidTTSEnd', onEnd);
+                options.progressFn();
+            };
+            window.addEventListener('androidTTSEnd', onEnd, { once: true });
+        }
+        hasSpoken = true;
+        isSpeakingNative = true;
+        window.AndroidTTS.speak(text, lang, pitch, rate);
+    } else if (speechService.nativeSpeechSupported() && nativeVoices.length > 0) {
         var msg = new SpeechSynthesisUtterance(text);
         msg.voice = nativeVoices[0].ref;
         let isSelectedVoice = nativeVoices[0].id === preferredVoiceId;
@@ -223,7 +238,10 @@ speechService.stopSpeaking = function () {
     isSpeakingNative = false;
     startedSpeakingRV = false;
     _speakArrayRunId = null;
-    if (speechService.nativeSpeechSupported()) {
+    if (window.AndroidTTS && window.AndroidTTS.stop) {
+        window.AndroidTTS.stop();
+    }
+    if (speechService.nativeSpeechSupported() && window.speechSynthesis) {
         window.speechSynthesis.cancel();
     }
     responsiveVoice.cancel();
@@ -231,6 +249,11 @@ speechService.stopSpeaking = function () {
 };
 
 speechService.isSpeaking = async function () {
+    if (window.AndroidTTS && window.AndroidTTS.isSpeaking) {
+        if (window.AndroidTTS.isSpeaking()) {
+            return true;
+        }
+    }
     let isSpeakingRV = startedSpeakingRV && responsiveVoice.isPlaying();
     if (isSpeakingNative || isSpeakingRV) {
         return true;
@@ -342,9 +365,10 @@ speechService.voiceSortFn = function (a, b) {
  */
 speechService.nativeSpeechSupported = function () {
     return !!(
-        typeof SpeechSynthesisUtterance !== 'undefined' &&
+        (window.AndroidTTS && window.AndroidTTS.isAvailable && window.AndroidTTS.isAvailable()) ||
+        (typeof SpeechSynthesisUtterance !== 'undefined' &&
         window.speechSynthesis &&
-        window.speechSynthesis.getVoices
+        window.speechSynthesis.getVoices)
     );
 };
 
@@ -442,7 +466,27 @@ async function registerVoices(arrayNativeVoices) {
 }
 
 async function init() {
-    if (speechService.nativeSpeechSupported()) {
+    if (window.AndroidTTS) {
+        let androidVoices = [];
+        try {
+            if (window.AndroidTTS.getVoices) {
+                let vStr = window.AndroidTTS.getVoices();
+                if (vStr) androidVoices = JSON.parse(vStr);
+            }
+        } catch (e) {}
+        if (androidVoices && androidVoices.length > 0) {
+            androidVoices.forEach((v) => {
+                addVoice('android_' + v.name, v.name, v.lang || v.locale, constants.VOICE_TYPE_NATIVE, !v.isNetworkConnectionRequired, v);
+            });
+        }
+        window.addEventListener('androidTTSStart', () => {
+            hasSpoken = true;
+            isSpeakingNative = true;
+        });
+        window.addEventListener('androidTTSEnd', () => {
+            isSpeakingNative = false;
+        });
+    } else if (speechService.nativeSpeechSupported() && window.speechSynthesis) {
         await registerVoices(window.speechSynthesis.getVoices());
         window.speechSynthesis.onvoiceschanged = function () {
             registerVoices(window.speechSynthesis.getVoices());
