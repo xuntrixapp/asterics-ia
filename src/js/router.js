@@ -133,14 +133,10 @@ Router.init = function (injectIdParam, initialHash) {
             $(document).trigger(constants.EVENT_NAVIGATE);
             let validForLocked =
                 !hash.startsWith('#grid/edit') && (hash.startsWith('#main') || hash.startsWith('#grid/'));
-            if (_locked && !validForLocked) {
-                done(constants.IS_SAFARI ? undefined : false);
-                if (constants.IS_SAFARI) {
-                    return setTimeout(() => {
-                        Router.toMain();
-                    }, 100);
-                }
-                return Router.toMain();
+            let isInitial = !_currentView;
+            if (_locked && !validForLocked && !isInitial) {
+                done(false);
+                return;
             }
             if (_currentView && _currentView.destroy) {
                 _currentView.destroy();

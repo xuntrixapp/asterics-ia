@@ -1,3 +1,15 @@
+if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+    self.addEventListener('install', () => self.skipWaiting());
+    self.addEventListener('activate', (event) => {
+        event.waitUntil(
+            caches.keys().then((names) => {
+                return Promise.all(names.map(name => caches.delete(name)));
+            }).then(() => {
+                return self.registration.unregister();
+            })
+        );
+    });
+} else {
 importScripts(
     'app/lib/workbox/workbox-v7.4.0/workbox-core.prod.js',
     'app/lib/workbox/workbox-v7.4.0/workbox-strategies.prod.js',
@@ -40,7 +52,7 @@ if (self.URLS_TO_CACHE && self.URLS_TO_CACHE.length > 0) {
     // Since we don't have a build tool generating hashes use the version constant
     const precacheManifest = self.URLS_TO_CACHE.map(url => ({
         url: url,
-        revision: 'v014-startup-loop-fix'
+        revision: 'v017-fullscreen-exit-header'
     }));
 
     workbox.precaching.precacheAndRoute(precacheManifest);
@@ -260,4 +272,5 @@ if (constants.ENABLE_REMOTE_DEBUGGING) {
             };
         });
     })();
+}
 }

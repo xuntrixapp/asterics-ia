@@ -2,9 +2,9 @@
     <div class="box" id="gridView" v-cloak>
         <header class="srow header" role="toolbar" v-if="metadata" v-show="!metadata.fullscreen">
             <header-icon class="left" v-show="!metadata.locked"></header-icon>
-            <div class="btn-group left">
-                <button tabindex="30" v-show="!metadata.locked" @click="toEditGrid()" class="spaced small" :aria-label="$t('editingOn')"><i class="fas fa-pencil-alt"/> <span class="hide-mobile">{{ $t('editingOn') }}</span></button>
-                <button tabindex="31" id="inputConfigButton" v-show="!metadata.locked" @click="openInputConfigMenu($event)" class="small" :aria-label="$t('inputOptions')"><i class="fas fa-cog"></i> <span class="hide-mobile">{{ $t('inputOptions') }}</span></button>
+            <div class="btn-group left" v-show="!metadata.locked">
+                <button tabindex="30" @click="toEditGrid()" class="spaced small" :aria-label="$t('editingOn')"><i class="fas fa-pencil-alt"/> <span class="hide-mobile">{{ $t('editingOn') }}</span></button>
+                <button tabindex="31" id="inputConfigButton" @click="openInputConfigMenu($event)" class="small" :aria-label="$t('inputOptions')"><i class="fas fa-cog"></i> <span class="hide-mobile">{{ $t('inputOptions') }}</span></button>
                 <div id="inputConfigMenu"></div>
             </div>
             <button tabindex="34" v-show="metadata.locked" @click="unlock()" class="small" :aria-label="$t('unlock')">
@@ -17,8 +17,12 @@
                 <i class="fas fa-lock"></i>
                 <span class="hide-mobile">{{ $t('lock') }}</span>
             </button>
-            <button tabindex="32" @click="systemActionService.enterFullscreen()" class="spaced small" :aria-label="$t('fullscreen')"><i class="fas fa-expand"/> <span class="hide-mobile">{{ $t('fullscreen') }}</span></button>
-
+            <button tabindex="35" v-if="isGroqActive" @click="openModal(modalTypes.MODAL_GROQ_RECENT)" class="small spaced" :title="groqStatusTooltip" style="display: inline-flex; align-items: center;">
+                <span class="groq-status-dot" :class="'groq-status-' + groqStatus"></span>
+                <i class="fas fa-history" style="margin-right: 4px;"></i>
+                <span class="hide-mobile">{{ $t('groqRecentPhrases') }}</span>
+            </button>
+            <button tabindex="32" v-show="!metadata.locked" @click="systemActionService.enterFullscreen()" class="spaced small" :aria-label="$t('fullscreen')"><i class="fas fa-expand"/> <span class="hide-mobile">{{ $t('fullscreen') }}</span></button>
         </header>
         <div class="srow content text-content" v-show="!renderGridData">
             <div class="grid-container grid-mask">
@@ -32,6 +36,16 @@
         <scanning-modal v-if="showModal === modalTypes.MODAL_SCANNING" @close="showModal = null; reloadInputMethods();"/>
         <sequential-input-modal v-if="showModal === modalTypes.MODAL_SEQUENTIAL" @close="showModal = null; reloadInputMethods();"/>
         <unlock-modal v-if="showModal === modalTypes.MODAL_UNLOCK" @unlock="unlock(true)" @close="showModal = null;"/>
+        <groq-recent-modal v-if="showModal === modalTypes.MODAL_GROQ_RECENT" :metadata="metadata" @close="showModal = null; reloadInputMethods();"/>
+
+        <transition name="groq-subtitle-fade">
+            <div v-if="groqSubtitleText" class="groq-subtitle-container" @click="groqSubtitleText = null">
+                <div class="groq-subtitle-pill">
+                    <i class="fas fa-volume-up groq-subtitle-icon"></i>
+                    <span class="groq-subtitle-text" :class="subtitleFontClass">{{ formattedSubtitleText }}</span>
+                </div>
+            </div>
+        </transition>
 
         <div class="srow content spaced" v-if="renderGridData && renderGridData.gridElements.length === 0">
             <div style="margin-top: 2em">
@@ -89,6 +103,8 @@
     import { liveElementService } from '../../js/service/liveElementService';
     import { GridElement } from '../../js/model/GridElement';
     import { kioskService } from '../../js/service/kioskService';
+    import GroqRecentModal from '../modals/groqRecentModal.vue';
+    import { groqService } from '../../js/service/groqService';
 
     let vueApp = null;
     let UNLOCK_COUNT = 8;
@@ -98,7 +114,8 @@
         MODAL_DIRECTION: 'MODAL_DIRECTION',
         MODAL_HUFFMAN: 'MODAL_HUFFMAN',
         MODAL_SEQUENTIAL: 'MODAL_SEQUENTIAL',
-        MODAL_UNLOCK: 'MODAL_UNLOCK'
+        MODAL_UNLOCK: 'MODAL_UNLOCK',
+        MODAL_GROQ_RECENT: 'MODAL_GROQ_RECENT'
     };
 
     let vueConfig = {
@@ -128,7 +145,36 @@
                 highlightTimeoutHandler: null,
                 highlightedElementId: null,
                 systemActionService: systemActionService,
-                gridUtil: gridUtil
+                gridUtil: gridUtil,
+                groqSubtitleText: null,
+                groqSubtitleTimeout: null,
+                groqStatus: groqService.getStatus()
+            }
+        },
+        computed: {
+            isGroqActive() {
+                if (!this.metadata) return false;
+                let appSettings = null;
+                try {
+                    appSettings = localStorageService.getAppSettings();
+                } catch (e) {}
+                return !!(this.metadata.activateGroqGrammarAPI || (appSettings && appSettings.activateGroqGrammarAPI));
+            },
+            subtitleFontClass() {
+                return (this.metadata && this.metadata.textConfig && this.metadata.textConfig.fontFamily) || '';
+            },
+            formattedSubtitleText() {
+                if (!this.groqSubtitleText) return '';
+                let convertMode = this.metadata && this.metadata.textConfig ? this.metadata.textConfig.convertMode : null;
+                return util.convertLowerUppercase(this.groqSubtitleText, convertMode);
+            },
+            groqStatusTooltip() {
+                if (this.groqStatus === 'cache') {
+                    return this.$t('groqStatusCache');
+                } else if (this.groqStatus === 'fallback' || this.groqStatus === 'offline') {
+                    return this.$t('groqStatusOffline');
+                }
+                return this.$t('groqStatusOnline');
             }
         },
         components: {
@@ -138,9 +184,28 @@
             HuffmanInputModal,
             DirectionInputModal,
             MouseModal,
-            ScanningModal, HeaderIcon
+            ScanningModal, HeaderIcon,
+            GroqRecentModal
         },
         methods: {
+            onGroqPhraseSpoken(e, data) {
+                if (!data || !data.text) return;
+                this.groqSubtitleText = data.text;
+                if (data.status) {
+                    this.groqStatus = data.status;
+                }
+                if (this.groqSubtitleTimeout) {
+                    clearTimeout(this.groqSubtitleTimeout);
+                }
+                this.groqSubtitleTimeout = setTimeout(() => {
+                    if (vueApp) {
+                        vueApp.groqSubtitleText = null;
+                    }
+                }, 3800);
+            },
+            onGroqStatusChanged(e, status) {
+                this.groqStatus = status;
+            },
             openModal(modalType) {
                 this.showModal = modalType;
                 stopInputMethods();
@@ -149,9 +214,10 @@
                 let thiz = this;
                 thiz.metadata.locked = true;
                 thiz.unlockCounter = UNLOCK_COUNT;
-                dataService.saveMetadata(thiz.metadata).then(() => {
-                    this.setViewPropsLocked();
-                });
+                localStorageService.save('AG_APP_LOCKED', 'true');
+                this.setViewPropsLocked();
+                kioskService.lockApp();
+                dataService.saveMetadata(thiz.metadata);
             },
             unlock(force) {
                 let thiz = this;
@@ -165,16 +231,16 @@
                 }, 3000);
                 if (thiz.unlockCounter === 0 || force) {
                     thiz.metadata.locked = false;
-                    dataService.saveMetadata(thiz.metadata).then(() => {
-                        this.setViewPropsUnlocked();
-                    });
+                    thiz.unlockCounter = UNLOCK_COUNT;
+                    localStorageService.save('AG_APP_LOCKED', 'false');
+                    this.setViewPropsUnlocked();
+                    kioskService.unlockApp();
+                    dataService.saveMetadata(thiz.metadata);
                 }
             },
             setViewPropsLocked() {
                 $(document).trigger(constants.EVENT_SIDEBAR_CLOSE);
                 $(document).trigger(constants.EVENT_UI_LOCKED);
-
-                kioskService.lockApp();
 
                 // prevent zoom
                 $('#viewPortMeta').attr('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
@@ -193,6 +259,58 @@
             },
             preventZoomHandler(event) {
                 event.preventDefault();
+            },
+            initKioskAndFullscreenOnceReady() {
+                let appSettings = localStorageService.getAppSettings() || {};
+                let autoLock = !!appSettings.autoLockOnStartup;
+                let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
+                let pinApp = !!appSettings.pinAppOnLock;
+
+                // 1. Establecer el estado de bloqueo si está activo en configuración o metadata
+                if (autoLock || this.metadata.locked) {
+                    this.metadata.locked = true;
+                    this.unlockCounter = UNLOCK_COUNT;
+                    localStorageService.save('AG_APP_LOCKED', 'true');
+                    this.setViewPropsLocked();
+                    dataService.saveMetadata(this.metadata);
+                }
+
+                // 2. Establecer la pantalla completa visual si está activa en configuración
+                if (autoFullscreen) {
+                    this.metadata.fullscreen = true;
+                }
+
+                // 3. Aplicar fijación (kiosk/lockTask) y pantalla completa una vez que la app está iniciada
+                const applyKioskAndFullscreen = () => {
+                    if (autoFullscreen && !util.isFullscreen()) {
+                        try {
+                            let p = util.openFullscreen();
+                            if (p && p.catch) p.catch(() => {});
+                        } catch (e) {}
+                    }
+                    if (autoLock || this.metadata.locked || pinApp) {
+                        try {
+                            kioskService.lockApp({ fullscreen: autoFullscreen });
+                        } catch (e) {}
+                    }
+                };
+
+                // Ejecutar inmediatamente al haberse completado la iniciación de la app
+                applyKioskAndFullscreen();
+
+                // Si el navegador web de escritorio restringe la pantalla completa sin gesto previo del usuario,
+                // aseguramos que se active de forma transparente en la primera interacción (toque, clic o tecla)
+                if (autoFullscreen || pinApp || autoLock || this.metadata.locked) {
+                    let engaged = false;
+                    const onUserInteraction = () => {
+                        if (engaged) return;
+                        engaged = true;
+                        applyKioskAndFullscreen();
+                    };
+                    window.addEventListener('pointerdown', onUserInteraction, { once: true, capture: true });
+                    window.addEventListener('click', onUserInteraction, { once: true, capture: true });
+                    window.addEventListener('keydown', onUserInteraction, { once: true, capture: true });
+                }
             },
             reloadInputMethods() {
                 this.initInputMethods({reload: true});
@@ -305,6 +423,7 @@
                     Router.addToGridHistory(this.renderGridData.id);
 
                     if (updateThumbnail) {
+                        this.skipThumbnailCheck = true;
                         imageUtil.allImagesLoaded().then(async () => {
                             let screenshot = await imageUtil.getScreenshot("#grid-container");
                             let thumbnail = {
@@ -381,7 +500,12 @@
                 this.updatedMetadataDoc = updatedDocs.filter(doc => (vueApp.metadata && doc.id === vueApp.metadata.id))[0] || this.updatedMetadataDoc;
                 if (updatedGridDoc) {
                     let gridDoc = await dataService.getGrid(updatedGridDoc.id); // get again in order to be sure to have correct revision on conflicts
-                    vueApp.loadGrid(gridDoc, { continueInputMethods: true, forceReload: true });
+                    let contentChanged = !vueApp.renderGridData || 
+                        JSON.stringify(gridDoc.gridElements) !== JSON.stringify(vueApp.renderGridData.gridElements) ||
+                        gridDoc.name !== vueApp.renderGridData.name;
+                    if (contentChanged) {
+                        vueApp.loadGrid(gridDoc, { continueInputMethods: true, forceReload: true });
+                    }
                 } else if (hasUpdatedGlobalGrid) {
                     let gridData = await dataService.getGrid(vueApp.renderGridData.id, false, true);
                     this.globalGridData = await dataService.getGlobalGrid();
@@ -414,28 +538,38 @@
                         }
                     }
                 }
-                this.metadata = this.updatedMetadataDoc || this.metadata;
+                if (this.updatedMetadataDoc) {
+                    if (vueApp && vueApp.metadata && vueApp.metadata.locked) {
+                        this.updatedMetadataDoc.locked = true;
+                    }
+                    this.metadata = this.updatedMetadataDoc;
+                }
             },
             async recalculateRenderGrid(gridData) {
-                // attention: gridData also changes because of "noDeepCopy: true"
-                // just using this.renderGridData for clarity
                 this.showGrid = false;
                 let globalGrid = null;
-                gridData = gridUtil.fillFreeSpaces(gridData, GridElement.ELEMENT_TYPE_UI_FILLER);
-                if (gridUtil.hasDynamicGridPlaceholder(this.globalGridData)) {
-                    this.globalGridData = gridUtil.fillFreeSpaces(this.globalGridData, GridElement.ELEMENT_TYPE_UI_FILLER);
-                }
-                if (gridData.showGlobalGrid) {
-                    globalGrid = this.globalGridData;
-                    if (gridData.globalGridId) { // custom global grid
-                        globalGrid = await dataService.getGrid(gridData.globalGridId, false, true);
+                // Deep copy so we NEVER mutate the original gridData or database cache
+                let localGridData = JSON.parse(JSON.stringify(gridData));
+                localGridData = gridUtil.fillFreeSpaces(localGridData, GridElement.ELEMENT_TYPE_UI_FILLER);
+                if (localGridData.showGlobalGrid) {
+                    let sourceGlobalGrid = this.globalGridData;
+                    if (localGridData.globalGridId) { // custom global grid
+                        sourceGlobalGrid = await dataService.getGrid(localGridData.globalGridId, false, true);
                     }
-                    this.renderGridData = gridUtil.mergeGrids(gridData, globalGrid, {
-                        globalGridHeightPercentage: this.metadata.globalGridHeightPercentage,
-                        noDeepCopy: true
-                    });
+                    if (sourceGlobalGrid) {
+                        let localGlobalGrid = JSON.parse(JSON.stringify(sourceGlobalGrid));
+                        if (gridUtil.hasDynamicGridPlaceholder(localGlobalGrid)) {
+                            localGlobalGrid = gridUtil.fillFreeSpaces(localGlobalGrid, GridElement.ELEMENT_TYPE_UI_FILLER);
+                        }
+                        this.renderGridData = gridUtil.mergeGrids(localGridData, localGlobalGrid, {
+                            globalGridHeightPercentage: this.metadata.globalGridHeightPercentage,
+                            noDeepCopy: false
+                        });
+                    } else {
+                        this.renderGridData = localGridData;
+                    }
                 } else {
-                    this.renderGridData = gridData;
+                    this.renderGridData = localGridData;
                 }
                 this.renderGridData = gridUtil.adaptFirstRowHeight(this.renderGridData, this.metadata.firstRowHeightFactor);
                 this.renderGridData.minColumnCount = gridUtil.getWidthWithBounds(this.renderGridData);
@@ -481,11 +615,26 @@
                     }
                 }, 500);
             },
+            fullscreenChangeListener() {
+                let isFs = util.isFullscreen();
+                if (this.metadata) {
+                    this.metadata.fullscreen = isFs;
+                }
+                $(document).trigger(constants.EVENT_GRID_RESIZE);
+            },
             contextMenuListener(event) {
                 event.preventDefault();
             },
-            async metadataUpdated() {
-                this.metadata = await dataService.getMetadata();
+            async metadataUpdated(event, newMetadata) {
+                if (newMetadata) {
+                    this.metadata = newMetadata;
+                } else {
+                    let m = await dataService.getMetadata();
+                    if (this.metadata && this.metadata.locked) {
+                        m.locked = true;
+                    }
+                    this.metadata = m;
+                }
             },
             async rerenderGrid() {
                 if (this.renderGridData) {
@@ -500,6 +649,10 @@
             $(document).on(constants.EVENT_SIDEBAR_OPEN, this.onSidebarOpen);
             $(document).on(constants.EVENT_NAVIGATE_GRID_IN_VIEWMODE, this.onNavigateEvent);
             document.addEventListener('contextmenu', this.contextMenuListener);
+            document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
+            document.addEventListener('webkitfullscreenchange', this.fullscreenChangeListener);
+            document.addEventListener('mozfullscreenchange', this.fullscreenChangeListener);
+            document.addEventListener('MSFullscreenChange', this.fullscreenChangeListener);
             window.addEventListener('resize', this.resizeListener, true);
             $(document).on(constants.EVENT_GRID_RESIZE, this.resizeListener);
             $(document).on(constants.EVENT_METADATA_UPDATED, this.metadataUpdated);
@@ -510,12 +663,18 @@
             $(document).off(constants.EVENT_SIDEBAR_OPEN, this.onSidebarOpen);
             $(document).off(constants.EVENT_NAVIGATE_GRID_IN_VIEWMODE, this.onNavigateEvent);
             document.removeEventListener('contextmenu', this.contextMenuListener);
+            document.removeEventListener('fullscreenchange', this.fullscreenChangeListener);
+            document.removeEventListener('webkitfullscreenchange', this.fullscreenChangeListener);
+            document.removeEventListener('mozfullscreenchange', this.fullscreenChangeListener);
+            document.removeEventListener('MSFullscreenChange', this.fullscreenChangeListener);
             window.removeEventListener('resize', this.resizeListener, true);
             $(document).off(constants.EVENT_GRID_RESIZE, this.resizeListener);
             $(document).off(constants.EVENT_METADATA_UPDATED, this.metadataUpdated);
             $(document).off(constants.EVENT_GRID_RERENDER, this.rerenderGrid);
             stopInputMethods();
-            this.setViewPropsUnlocked();
+            if (!this.metadata || !this.metadata.locked) {
+                this.setViewPropsUnlocked();
+            }
             $.contextMenu('destroy');
             liveElementService.stop();
             vueApp = null;
@@ -523,16 +682,34 @@
         mounted: async function () {
             vueApp = this;
 
+            let appSettings = localStorageService.getAppSettings() || {};
+            let autoLock = !!appSettings.autoLockOnStartup;
+            let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
+
+            let storedLocked = localStorageService.get('AG_APP_LOCKED');
             let savedMetadata = await dataService.getMetadata();
             let metadata = JSON.parse(JSON.stringify(savedMetadata || new MetaData()));
             metadata.lastOpenedGridId = this.gridId;
-            metadata.locked = !!(metadata.locked || urlParamService.isLocked(true));
-            metadata.fullscreen = !!(metadata.fullscreen && util.isFullscreen());
+            if (storedLocked !== null && storedLocked !== undefined) {
+                metadata.locked = storedLocked === 'true';
+            } else {
+                metadata.locked = !!(metadata.locked || autoLock || urlParamService.isLocked(true));
+            }
+            if (autoLock) {
+                metadata.locked = true;
+                localStorageService.save('AG_APP_LOCKED', 'true');
+            }
+            metadata.fullscreen = !!(metadata.fullscreen || (autoFullscreen && util.isFullscreen()));
 
             metadata.inputConfig.scanEnabled = urlParamService.isScanningEnabled() ? true : metadata.inputConfig.scanEnabled;
             metadata.inputConfig.dirEnabled = urlParamService.isDirectionEnabled() ? true : metadata.inputConfig.dirEnabled;
             metadata.inputConfig.huffEnabled = urlParamService.isHuffmanEnabled() ? true : metadata.inputConfig.huffEnabled;
             this.metadata = metadata;
+
+            if (this.metadata.locked) {
+                this.unlockCounter = UNLOCK_COUNT;
+                this.setViewPropsLocked();
+            }
 
             this.globalGridData = await dataService.getGlobalGrid();
             let gridData = await dataService.getGrid(this.gridId, false, true);
@@ -547,38 +724,23 @@
             }
             await this.loadGrid(gridData);
 
-            if (this.metadata.locked) {
-                this.setViewPropsLocked();
-            }
-
-            if (!window.__appStartupHandled) {
-                window.__appStartupHandled = true;
-                let appSettings = localStorageService.getAppSettings() || {};
-                let autoLock = !!appSettings.autoLockOnStartup;
-                let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
-
-                if (autoLock && !this.metadata.locked) {
-                    this.metadata.locked = true;
-                    this.unlockCounter = UNLOCK_COUNT;
-                    this.setViewPropsLocked();
-                }
-
-                if (autoFullscreen) {
-                    this.metadata.fullscreen = true;
-                    if (!util.isFullscreen()) {
-                        try {
-                            let p = util.openFullscreen();
-                            if (p && p.catch) p.catch(() => {});
-                        } catch (e) {}
-                        const onFirstInteraction = () => {
-                            if (!util.isFullscreen()) {
-                                try { util.openFullscreen(); } catch (err) {}
-                            }
-                        };
-                        window.addEventListener('pointerdown', onFirstInteraction, { once: true });
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    if (vueApp) {
+                        vueApp.initKioskAndFullscreenOnceReady();
                     }
-                }
+                }, 400);
+            });
+
+            $(document).on(constants.EVENT_GROQ_PHRASE_SPOKEN, this.onGroqPhraseSpoken);
+            $(document).on(constants.EVENT_GROQ_STATUS_CHANGED, this.onGroqStatusChanged);
+        },
+        beforeDestroy() {
+            if (this.groqSubtitleTimeout) {
+                clearTimeout(this.groqSubtitleTimeout);
             }
+            $(document).off(constants.EVENT_GROQ_PHRASE_SPOKEN, this.onGroqPhraseSpoken);
+            $(document).off(constants.EVENT_GROQ_STATUS_CHANGED, this.onGroqStatusChanged);
         }
     };
 

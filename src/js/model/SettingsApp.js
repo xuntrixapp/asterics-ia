@@ -20,6 +20,11 @@ class SettingsApp {
         this.pinAppOnLock = settings.pinAppOnLock !== undefined ? !!settings.pinAppOnLock : false;
         this.dimTimeout = settings.dimTimeout !== undefined ? settings.dimTimeout : 60;
         this.sleepTimeout = settings.sleepTimeout !== undefined ? settings.sleepTimeout : 180;
+        this.groqApiKey = settings.groqApiKey || "";
+        this.groqModel = settings.groqModel || "openai/gpt-oss-120b";
+        this.groqGender = settings.groqGender || "neutral";
+        this.groqComplexity = settings.groqComplexity || "intermediate";
+        this.groqUserContext = settings.groqUserContext || "";
 
         convertServiceLocal.updateDataModel(this);
     }

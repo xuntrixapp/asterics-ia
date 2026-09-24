@@ -50,12 +50,19 @@ module.exports = env => {
         devServer: {
             static: {
                 directory: path.resolve(__dirname),
-                watch: true
+                watch: {
+                    ignored: [
+                        '**/node_modules/**',
+                        '**/app/build/**',
+                        '**/.git/**'
+                    ]
+                }
             },
             host: '0.0.0.0',
             port: 9095,
             open: false,
             hot: true,
+            liveReload: false,
             client: {
                 overlay: true
             }

@@ -169,18 +169,31 @@ pouchDbService.save = function (idPrefix, data) {
                 log.debug('updated ' + idPrefix + ', id: ' + data._id);
                 resolve();
             })
-            .catch(function (err) {
+            .catch(async function (err) {
                 if (data.id) {
                     _documentCache.clear(data.id);
                 }
-                if (err.error === 'conflict') {
-                    log.warn('conflict with remote version updating document with id: ' + data.id);
-                    resolve();
+                let isConflict = err && (err.name === 'conflict' || err.status === 409 || err.error === 'conflict' || (err.message && err.message.toLowerCase().includes('conflict')));
+                if (isConflict) {
+                    log.warn('conflict updating document with id: ' + data._id + ', attempting to resolve with latest revision...');
+                    try {
+                        let latestDoc = await _pouchDbAdapter.get(data._id);
+                        if (latestDoc && latestDoc._rev) {
+                            data._rev = latestDoc._rev;
+                            let res = await _pouchDbAdapter.put(data);
+                            data._rev = res.rev;
+                            _documentCache.set(data.id, data);
+                            log.info('conflict resolved successfully for id: ' + data._id);
+                            return resolve();
+                        }
+                    } catch (retryErr) {
+                        log.warn('conflict resolution retry failed for id: ' + data._id, retryErr);
+                    }
+                    return resolve();
                 } else {
                     log.error(err);
-                    reject(err);
+                    return reject(err);
                 }
-                reject();
             })
             .finally(() => {
                 resumeSyncInternal();

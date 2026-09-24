@@ -336,7 +336,17 @@ util.openFullscreen = function () {
     let openFn =
         elem.requestFullscreen || elem.mozRequestFullScreen || elem.webkitRequestFullscreen || elem.msRequestFullscreen;
     if (openFn) {
-        openFn.call(elem);
+        try {
+            let res = openFn.call(elem);
+            if (res && typeof res.catch === 'function') {
+                res.catch((err) => {
+                    log.debug('Fullscreen request deferred or denied:', err);
+                });
+            }
+            return res;
+        } catch (e) {
+            log.debug('Fullscreen call threw error:', e);
+        }
     }
 };
 
@@ -350,7 +360,13 @@ util.closeFullscreen = function () {
         document.webkitExitFullscreen ||
         document.msExitFullscreen;
     if (closeFn) {
-        closeFn.call(document);
+        try {
+            let res = closeFn.call(document);
+            if (res && typeof res.catch === 'function') {
+                res.catch(() => {});
+            }
+            return res;
+        } catch (e) {}
     }
 };
 

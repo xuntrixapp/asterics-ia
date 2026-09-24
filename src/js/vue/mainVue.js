@@ -267,7 +267,16 @@ MainVue.init = function () {
                 thiz.openSidebar();
 
                 async function openSidebarIfFullscreen() {
-                    await systemActionService.exitFullscreen();
+                    let metadata = await dataService.getMetadata();
+                    if (util.isFullscreen()) {
+                        await systemActionService.exitFullscreen();
+                    } else if (metadata && metadata.fullscreen) {
+                        metadata.fullscreen = false;
+                        await dataService.saveMetadata(metadata);
+                    }
+                    if (metadata && metadata.locked) {
+                        return;
+                    }
                     thiz.openSidebar();
                 }
             }

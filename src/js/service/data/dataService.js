@@ -241,31 +241,44 @@ dataService.addGridElements = function (gridId, newGridElements) {
  * @param newMetadata new or updated metadata object
  * @return {Promise} resolves after operation finished successful
  */
-dataService.saveMetadata = async function(newMetadata) {
+let _saveMetadataQueue = Promise.resolve();
+
+dataService.saveMetadata = function(newMetadata) {
     newMetadata = JSON.parse(JSON.stringify(newMetadata));
-    let updated = false;
-    let existingMetadata = await dataService.getMetadata();
-    if (existingMetadata) {
-        //new metadata is stored with ID of existing metadata -> there should only be one metadata object
-        let id = existingMetadata instanceof Array ? existingMetadata[0].id : existingMetadata.id;
-        newMetadata.id = id;
+    if (newMetadata.locked !== undefined) {
+        localStorageService.save('AG_APP_LOCKED', newMetadata.locked ? 'true' : 'false');
     }
-    if (!existingMetadata.isEqual(newMetadata)) {
-        localStorageService.saveUserSettings({ metadata: newMetadata });
-        updated = true;
-    }
-    if (!localStorageService.getAppSettings().syncNavigation) {
-        newMetadata.locked = existingMetadata.locked;
-        newMetadata.fullscreen = existingMetadata.fullscreen;
-        newMetadata.lastOpenedGridId = existingMetadata.lastOpenedGridId;
-    }
-    if (!existingMetadata.isEqual(newMetadata)) {
-        await databaseService.saveObject(MetaData, newMetadata);
-        updated = true;
-    }
-    if (updated) {
-        $(document).trigger(constants.EVENT_METADATA_UPDATED, newMetadata);
-    }
+    _saveMetadataQueue = _saveMetadataQueue.then(async () => {
+        let updated = false;
+        let existingMetadata = await dataService.getMetadata();
+        if (existingMetadata) {
+            //new metadata is stored with ID of existing metadata -> there should only be one metadata object
+            let id = existingMetadata instanceof Array ? existingMetadata[0].id : existingMetadata.id;
+            newMetadata.id = id;
+        }
+        if (!existingMetadata.isEqual(newMetadata)) {
+            localStorageService.saveUserSettings({ metadata: newMetadata });
+            updated = true;
+        }
+        let dbMetadata = JSON.parse(JSON.stringify(newMetadata));
+        if (!localStorageService.getAppSettings().syncNavigation && existingMetadata) {
+            dbMetadata.lastOpenedGridId = existingMetadata.lastOpenedGridId;
+        }
+        if (!existingMetadata.isEqual(dbMetadata)) {
+            try {
+                await databaseService.saveObject(MetaData, dbMetadata);
+                updated = true;
+            } catch (err) {
+                log.warn('databaseService.saveObject for MetaData handled error:', err);
+            }
+        }
+        if (updated) {
+            $(document).trigger(constants.EVENT_METADATA_UPDATED, newMetadata);
+        }
+    }).catch((err) => {
+        log.warn('saveMetadata queue error handled:', err);
+    });
+    return _saveMetadataQueue;
 };
 
 /**
@@ -304,6 +317,10 @@ dataService.getMetadata = function () {
                     returnValue.fullscreen = localMetadata.fullscreen;
                     returnValue.lastOpenedGridId = localMetadata.lastOpenedGridId;
                 }
+            }
+            let storedLocked = localStorageService.get('AG_APP_LOCKED');
+            if (storedLocked !== null && storedLocked !== undefined) {
+                returnValue.locked = storedLocked === 'true';
             }
             resolve(new MetaData(returnValue));
         });

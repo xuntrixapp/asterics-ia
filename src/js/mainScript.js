@@ -89,8 +89,15 @@ async function init() {
 init();
 
 function initServiceWorker() {
-    if (!constants.IS_ENVIRONMENT_PROD && !constants.FORCE_USE_SW) {
-        log.warn('Not installing Service Worker because on development environment.');
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || (!constants.IS_ENVIRONMENT_PROD && !constants.FORCE_USE_SW)) {
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+        log.warn('Not installing Service Worker because on development/localhost environment.');
         return;
     }
     if (constants.SUPPORTS_SERVICE_WORKER) {

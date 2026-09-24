@@ -21,19 +21,23 @@
                             <input id="gridCols" type="number" class="three columns" v-model.number="gridData.minColumnCount" min="1" :max="gridLayoutUtil.MAX_GRID_SIZE"/>
                         </div>
                         <h2>{{ $t('boardBackgroundImage') }}</h2>
-                        <div class="srow mb-5">
-                            <span class="four columns" style="font-weight: bold;">{{ $t('image') }}</span>
-                            <label for="bgImageInput" class="three columns button" style="margin-bottom: 0; text-align: center; cursor: pointer;">
+                        <div class="srow">
+                            <label class="four columns">{{ $t('image') }}</label>
+                            <button type="button" class="eight columns" @click="$refs.bgImageFileInput.click()">
                                 <i class="fas fa-file-upload"/> <span>{{ $t('chooseFile') }}</span>
-                            </label>
-                            <input type="file" ref="bgImageFileInput" id="bgImageInput" style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;" @change="onBgImageSelected" accept="image/png, image/jpeg, image/webp, image/svg+xml, image/gif"/>
-                            <button type="button" class="three columns" :disabled="!gridData.backgroundImage" @click="clearBgImage()">
-                                <i class="fas fa-times"/> <span>{{ $t('clear') }}</span>
+                            </button>
+                            <input type="file" ref="bgImageFileInput" id="bgImageInput" style="display: none;" @change="onBgImageSelected" accept="image/png, image/jpeg, image/webp, image/svg+xml, image/gif"/>
+                        </div>
+                        <div class="srow">
+                            <button type="button" class="offset-by-four eight columns" :disabled="!gridData.backgroundImage" @click="clearBgImage()">
+                                <i class="fas fa-trash-alt"/> <span>{{ $t('clear') }}</span>
                             </button>
                         </div>
-                        <div class="srow" v-if="gridData.backgroundImage" style="display: flex; justify-content: center; align-items: center; margin-top: 0.5em;">
-                            <div style="border: 1px solid #dcdcdc; border-radius: 4px; padding: 4px; background: #f8f9fa;">
-                                <img :src="gridData.backgroundImage" style="max-width: 140px; max-height: 85px; display: block; object-fit: contain;" alt="Preview"/>
+                        <div class="srow" v-if="gridData.backgroundImage">
+                            <div class="offset-by-four eight columns" style="display: flex; align-items: center;">
+                                <div style="border: 1px solid #dcdcdc; border-radius: 2px; padding: 4px; background: #f8f9fa;">
+                                    <img :src="gridData.backgroundImage" style="max-width: 160px; max-height: 90px; display: block; object-fit: contain;" alt="Preview"/>
+                                </div>
                             </div>
                         </div>
                         <div v-if="!isGlobalGrid">

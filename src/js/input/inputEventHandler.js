@@ -430,9 +430,14 @@ function Constructor() {
         }
     }
 
+    let _wasFullscreen = false;
     function fullscreenChangeListener() {
-        if (!util.isFullscreen()) {
+        let isFs = util.isFullscreen();
+        if (!isFs && _wasFullscreen) {
+            _wasFullscreen = false;
             callHandlers(exitFullscreenHandlers);
+        } else if (isFs) {
+            _wasFullscreen = true;
         }
     }
 

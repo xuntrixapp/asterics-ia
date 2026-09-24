@@ -26,6 +26,12 @@ class MetaData extends Model({
     textConfig: [TextConfig],
     notificationConfig: [NotificationConfig],
     activateARASAACGrammarAPI: [Boolean],
+    activateGroqGrammarAPI: [Boolean],
+    groqApiKey: [String],
+    groqModel: [String],
+    groqGender: [String],
+    groqComplexity: [String],
+    groqUserContext: [String],
     vocabularyLevel: [Number, null],
     integrations: [Object] // IntegrationConfigSync
 }) {

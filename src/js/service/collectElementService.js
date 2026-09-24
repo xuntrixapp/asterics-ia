@@ -18,6 +18,8 @@ import { GridActionSpeakCustom } from '../model/GridActionSpeakCustom.js';
 import { dataService } from './data/dataService.js';
 import { GridActionAudio } from '../model/GridActionAudio.js';
 import {arasaacService} from "./pictograms/arasaacService.js";
+import {groqService} from "./groqService.js";
+import {localStorageService} from "./data/localStorageService.js";
 import {GridActionWordForm} from "../model/GridActionWordForm.js";
 import {stateService} from "./stateService.js";
 import {MapCache} from "../util/MapCache.js";
@@ -38,6 +40,7 @@ let collectMode = GridElementCollect.MODE_AUTO;
 let convertToLowercaseIfKeyboard = true;
 let convertMode = null;
 let activateARASAACGrammarAPI = false;
+let activateGroqGrammarAPI = false;
 
 let imgDimensionsCache = new MapCache();
 let _localMetadata = null;
@@ -110,14 +113,120 @@ collectElementService.doCollectElementActions = async function (action, gridElem
     if (!action) {
         return;
     }
-    if (GridActionCollectElement.isSpeakAction(action)) {
-        await collectElementService.doARASAACGrammarCorrection();
+
+    let isCollectBar = gridElement && gridElement.type === GridElement.ELEMENT_TYPE_COLLECT;
+
+    // Si la interacción es sobre la Frase acumulada, ejecutar proceso 100% original del PWA
+    if (isCollectBar) {
+        if (GridActionCollectElement.isSpeakAction(action)) {
+            await collectElementService.doARASAACGrammarCorrection();
+        }
+        let speakText = getPrintText({ dontIncludePronunciation: false });
+        let speakArray = getSpeakArray();
+        switch (action) {
+            case GridActionCollectElement.COLLECT_ACTION_SPEAK:
+                if (isSeparateMode(collectMode)) {
+                    speechService.speakArray(speakArray, (index) => {
+                        markedImageIndex = index;
+                        updateCollectElements();
+                    });
+                } else {
+                    speechService.speak(speakText);
+                }
+                break;
+            case GridActionCollectElement.COLLECT_ACTION_SPEAK_CONTINUOUS:
+                speechService.speak(speakText);
+                break;
+            case GridActionCollectElement.COLLECT_ACTION_SPEAK_CONTINUOUS_CLEAR:
+                speechService.speak(speakText);
+                await speechService.waitForFinishedSpeaking();
+                clearAll();
+                break;
+            case GridActionCollectElement.COLLECT_ACTION_SPEAK_CLEAR:
+                if (isSeparateMode(collectMode)) {
+                    speechService.speakArray(speakArray, (index, finished) => {
+                        markedImageIndex = index;
+                        updateCollectElements();
+                        if (finished) {
+                            clearAll();
+                        }
+                    });
+                } else {
+                    speechService.speak(speakText);
+                    speechService.doAfterFinishedSpeaking(() => {
+                        clearAll();
+                    });
+                }
+                break;
+        }
+        predictionService.predict(getPredictText(), dictionaryKey);
+        return;
     }
-    let speakText = getPrintText({ dontIncludePronunciation: false });
+
+    // Interacción mediante el botón de Play u otros botones del tablero:
+    let conjugatedGroqText = null;
+    if (GridActionCollectElement.isSpeakAction(action)) {
+        if (!_localMetadata) {
+            await getMetadataConfig();
+        }
+        let appSettings = null;
+        try {
+            appSettings = localStorageService.getAppSettings();
+        } catch (e) {}
+        let isGroqActive = !!(activateGroqGrammarAPI || (appSettings && appSettings.activateGroqGrammarAPI) || (_localMetadata && _localMetadata.activateGroqGrammarAPI));
+
+        if (isGroqActive) {
+            let rawText = getPrintText({ inlcudeCorrectedGrammar: false });
+            if (rawText && rawText.trim()) {
+                // Indicador visual en el botón pulsado durante el procesamiento
+                let targetDomElem = null;
+                if (gridElement && gridElement.id) {
+                    targetDomElem = document.getElementById(gridElement.id);
+                    if (targetDomElem) {
+                        targetDomElem.classList.add('groq-speaking');
+                    }
+                }
+                try {
+                    let groqGender = (_localMetadata && _localMetadata.groqGender) || (appSettings && appSettings.groqGender) || 'neutral';
+                    let groqComplexity = (_localMetadata && _localMetadata.groqComplexity) || (appSettings && appSettings.groqComplexity) || 'intermediate';
+                    let groqUserContext = (_localMetadata && _localMetadata.groqUserContext) || (appSettings && appSettings.groqUserContext) || '';
+                    console.log('[Play Groq] Enviando secuencia a Groq:', rawText, 'género:', groqGender, 'nivel:', groqComplexity);
+                    // Garantía de fallback con timeout estricto de seguridad (<2.8s)
+                    conjugatedGroqText = await Promise.race([
+                        groqService.getCorrectGrammar(rawText, { gender: groqGender, complexity: groqComplexity, userContext: groqUserContext }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 2800))
+                    ]);
+                    console.log('[Play Groq] Frase conjugada para TTS:', conjugatedGroqText);
+                } catch (e) {
+                    console.warn('[Play Groq] Fallback de seguridad ejecutado:', e);
+                    conjugatedGroqText = groqService.cleanDoubleTaps ? groqService.cleanDoubleTaps(rawText) : rawText;
+                } finally {
+                    if (targetDomElem) {
+                        setTimeout(() => targetDomElem.classList.remove('groq-speaking'), 350);
+                    }
+                }
+
+                if (conjugatedGroqText) {
+                    try {
+                        $(document).trigger(constants.EVENT_GROQ_PHRASE_SPOKEN, [{
+                            text: conjugatedGroqText,
+                            rawText: rawText,
+                            status: groqService.getStatus()
+                        }]);
+                    } catch (e) {}
+                }
+            }
+        } else if (activateARASAACGrammarAPI) {
+            await collectElementService.doARASAACGrammarCorrection();
+        }
+    }
+    let speakText = conjugatedGroqText || getPrintText({ dontIncludePronunciation: false });
     let speakArray = getSpeakArray();
     switch (action) {
         case GridActionCollectElement.COLLECT_ACTION_SPEAK:
-            if (isSeparateMode(collectMode)) {
+            if (conjugatedGroqText) {
+                speechService.speak(speakText);
+            } else if (isSeparateMode(collectMode)) {
                 speechService.speakArray(speakArray, (index) => {
                     markedImageIndex = index;
                     updateCollectElements();
@@ -135,7 +244,7 @@ collectElementService.doCollectElementActions = async function (action, gridElem
             clearAll();
             break;
         case GridActionCollectElement.COLLECT_ACTION_SPEAK_CLEAR:
-            if (isSeparateMode(collectMode)) {
+            if (!conjugatedGroqText && isSeparateMode(collectMode)) {
                 speechService.speakArray(speakArray, (index, finished) => {
                     markedImageIndex = index;
                     updateCollectElements();
@@ -675,6 +784,11 @@ async function getMetadataConfig() {
     _localMetadata = await dataService.getMetadata();
     convertMode = _localMetadata.textConfig.convertMode;
     activateARASAACGrammarAPI = _localMetadata.activateARASAACGrammarAPI;
+    let appSettings = null;
+    try {
+        appSettings = localStorageService.getAppSettings();
+    } catch (e) {}
+    activateGroqGrammarAPI = !!(_localMetadata.activateGroqGrammarAPI || (appSettings && appSettings.activateGroqGrammarAPI));
 }
 
 window.handleCollectElementImageError = function() {

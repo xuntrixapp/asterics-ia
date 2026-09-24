@@ -197,7 +197,20 @@
             },
             normalizeGrid: function () {
                 gridUtil.ensureUniqueIds(this.gridData.gridElements);
+                this.gridData.gridElements = this.gridData.gridElements.filter(e => e.type !== GridElement.ELEMENT_TYPE_UI_FILLER);
                 this.gridData.gridElements = gridLayoutUtil.normalizeGrid(this.gridData.gridElements);
+                let newWidth = Math.max(1, gridUtil.getWidth(this.gridData));
+                let newHeight = Math.max(1, gridUtil.getHeight(this.gridData));
+                this.gridData.minColumnCount = newWidth;
+                this.gridData.rowCount = newHeight;
+                this.updateGridWithUndo();
+            },
+            fitDimensions: function () {
+                this.gridData.gridElements = this.gridData.gridElements.filter(e => e.type !== GridElement.ELEMENT_TYPE_UI_FILLER);
+                let newWidth = Math.max(1, gridUtil.getWidth(this.gridData));
+                let newHeight = Math.max(1, gridUtil.getHeight(this.gridData));
+                this.gridData.minColumnCount = newWidth;
+                this.gridData.rowCount = newHeight;
                 this.updateGridWithUndo();
             },
             async handleChange(newElements) {
