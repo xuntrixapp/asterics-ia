@@ -356,18 +356,21 @@ function reasonToErrorCode(reason) {
     if (
         reason &&
         reason.error &&
+        typeof reason.error === 'string' &&
         reason.error.toLowerCase() === 'unauthorized' &&
         reason.message &&
         reason.message.includes('locked')
     ) {
         return loginService.ERROR_CODE_UNAUTHORIZED;
     }
-    if (reason && reason.error && reason.error.toLowerCase() === 'unauthorized') {
+    if (reason && reason.error && typeof reason.error === 'string' && reason.error.toLowerCase() === 'unauthorized') {
         return loginService.ERROR_CODE_UNAUTHORIZED;
     }
-    if (reason && reason.message && reason.message.toLowerCase() === 'network error') {
+    let msg = (reason && (reason.message || (typeof reason === 'string' ? reason : '')) || '').toLowerCase();
+    if (msg.includes('network') || msg.includes('fetch')) {
         return loginService.ERROR_CODE_NETWORK_ERROR;
     }
+    return loginService.ERROR_CODE_NETWORK_ERROR;
 }
 
 function autoRetryLogin(user, hashedPassword, saveUser) {
