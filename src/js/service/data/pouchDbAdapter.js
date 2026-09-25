@@ -237,46 +237,8 @@ function PouchDbAdapter(databaseName, remoteCouchDbAddress, onlyRemote, justCrea
      * @param isOnlineDb set to true if the database to open is an online database, false if it is offline
      * @return {*}
      */
-    const PROXY_WORKER_URL = 'https://asterics-proxy.xuntrixapp.workers.dev';
-
-    function getProxiedUrl(rawUrl) {
-        if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
-        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-            return rawUrl;
-        }
-        if (rawUrl.includes('couchdb.asterics-foundation.org') && !rawUrl.includes(PROXY_WORKER_URL)) {
-            let clean = rawUrl.replace(/^https?:\/\//i, '');
-            return `${PROXY_WORKER_URL}/${clean}`;
-        }
-        return rawUrl;
-    }
-
     function openDbInternal(dbNameOrAddress, isOnlineDb) {
-        let options = { auto_compaction: true };
-        let targetAddress = dbNameOrAddress;
-        if (isOnlineDb) {
-            targetAddress = getProxiedUrl(targetAddress);
-            let session = superlogin.getSession();
-            if (session && session.token && session.password) {
-                options.fetch = function (url, opts) {
-                    opts = opts || {};
-                    opts.headers = opts.headers || {};
-                    let authHeader = 'Bearer ' + session.token + ':' + session.password;
-                    if (typeof opts.headers.set === 'function') {
-                        opts.headers.set('Authorization', authHeader);
-                    } else {
-                        opts.headers['Authorization'] = authHeader;
-                    }
-                    let targetFetchUrl = getProxiedUrl(url);
-                    return PouchDB.fetch(targetFetchUrl, opts);
-                };
-                options.auth = {
-                    username: session.token,
-                    password: session.password
-                };
-            }
-        }
-        let dbHandler = new PouchDB(targetAddress, options);
+        let dbHandler = new PouchDB(dbNameOrAddress, { auto_compaction: true });
         return dbHandler.info().then(function (info) {
             log.debug(dbNameOrAddress + ' info:');
             log.debug(info);
