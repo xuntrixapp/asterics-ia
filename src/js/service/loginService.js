@@ -26,7 +26,12 @@ let _loginInProgress = false;
 
 let _lastParamHashedPw = null;
 let _lastParamSaveUser = null;
-let _serverUrl = 'https://login1.couchdb.asterics-foundation.org';
+const PROXY_WORKER_URL = 'https://asterics-proxy.xuntrixapp.workers.dev';
+const COUCH_AUTH_ORIGIN = 'https://login1.couchdb.asterics-foundation.org';
+
+let _serverUrl = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? COUCH_AUTH_ORIGIN
+    : `${PROXY_WORKER_URL}/login1.couchdb.asterics-foundation.org`;
 loginService.ERROR_CODE_UNAUTHORIZED = 'ERROR_CODE_UNAUTHORIZED';
 
 loginService.ERROR_CODE_LOCKED = 'ERROR_CODE_LOCKED';
