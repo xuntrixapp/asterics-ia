@@ -1,0 +1,845 @@
+<template>
+    <div class="box" id="gridView" v-cloak>
+        <header class="srow header" role="toolbar" v-if="metadata" v-show="!metadata.fullscreen">
+            <header-icon class="left" v-show="!metadata.locked"></header-icon>
+            <div class="btn-group left" v-show="!metadata.locked">
+                <button tabindex="30" @click="toEditGrid()" class="spaced small" :aria-label="$t('editingOn')"><i class="fas fa-pencil-alt"/> <span class="hide-mobile">{{ $t('editingOn') }}</span></button>
+                <button tabindex="31" id="inputConfigButton" @click="openInputConfigMenu($event)" class="small" :aria-label="$t('inputOptions')"><i class="fas fa-cog"></i> <span class="hide-mobile">{{ $t('inputOptions') }}</span></button>
+                <div id="inputConfigMenu"></div>
+            </div>
+            <button tabindex="34" v-show="metadata.locked" @click="unlock()" class="small" :aria-label="$t('unlock')">
+                <i class="fas fa-unlock"></i>
+                <span class="hide-mobile">{{ $t('unlock') }}</span>
+                <span v-if="unlockCounter !== unlockCount">{{unlockCounter}}</span>
+            </button>
+            <button tabindex="34" v-show="!metadata.locked" @click="MainVue.showSearchModal()" class="spaced small" :aria-label="$t('fullscreen')" :title="$t('searchBtnTitle')"><i class="fas fa-search"/> <span class="hide-mobile">{{ $t('search') }}</span></button>
+            <button tabindex="33" v-show="!metadata.locked" @click="lock()" class="small" :aria-label="$t('lock')">
+                <i class="fas fa-lock"></i>
+                <span class="hide-mobile">{{ $t('lock') }}</span>
+            </button>
+            <button tabindex="35" v-if="isGroqActive" @click="openModal(modalTypes.MODAL_GROQ_RECENT)" class="small spaced" :title="groqStatusTooltip" style="display: inline-flex; align-items: center;">
+                <span class="groq-status-dot" :class="'groq-status-' + groqStatus"></span>
+                <i class="fas fa-history" style="margin-right: 4px;"></i>
+                <span class="hide-mobile">{{ $t('groqRecentPhrases') }}</span>
+            </button>
+            <button tabindex="32" v-show="!metadata.locked" @click="systemActionService.enterFullscreen()" class="spaced small" :aria-label="$t('fullscreen')"><i class="fas fa-expand"/> <span class="hide-mobile">{{ $t('fullscreen') }}</span></button>
+        </header>
+        <div class="srow content text-content" v-show="!renderGridData">
+            <div class="grid-container grid-mask">
+                <i class="fas fa-4x fa-spinner fa-spin" style="position: relative;"/>
+            </div>
+        </div>
+
+        <huffman-input-modal v-if="showModal === modalTypes.MODAL_HUFFMAN" @close="showModal = null; reloadInputMethods();" />
+        <direction-input-modal v-if="showModal === modalTypes.MODAL_DIRECTION" @close="showModal = null; reloadInputMethods();"/>
+        <mouse-modal v-if="showModal === modalTypes.MODAL_MOUSE" @close="showModal = null; reloadInputMethods();"/>
+        <scanning-modal v-if="showModal === modalTypes.MODAL_SCANNING" @close="showModal = null; reloadInputMethods();"/>
+        <sequential-input-modal v-if="showModal === modalTypes.MODAL_SEQUENTIAL" @close="showModal = null; reloadInputMethods();"/>
+        <unlock-modal v-if="showModal === modalTypes.MODAL_UNLOCK" @unlock="unlock(true)" @close="showModal = null;"/>
+        <groq-recent-modal v-if="showModal === modalTypes.MODAL_GROQ_RECENT" :metadata="metadata" @close="showModal = null; reloadInputMethods();"/>
+
+        <transition name="groq-subtitle-fade">
+            <div v-if="groqSubtitleText" class="groq-subtitle-container" @click="groqSubtitleText = null">
+                <div class="groq-subtitle-pill">
+                    <i class="fas fa-volume-up groq-subtitle-icon"></i>
+                    <span class="groq-subtitle-text" :class="subtitleFontClass">{{ formattedSubtitleText }}</span>
+                </div>
+            </div>
+        </transition>
+
+        <div class="srow content spaced" v-if="renderGridData && renderGridData.gridElements.length === 0">
+            <div style="margin-top: 2em">
+                <i18n path="noElementsClickToEnterEdit" tag="span">
+                    <template v-slot:link>
+                        <a :href="'#grid/edit/' + renderGridData.id">{{ $t('editingOn') }}</a>
+                    </template>
+                </i18n>
+            </div>
+        </div>
+        <div class="srow content d-flex" v-if="showGrid && renderGridData && renderGridData.gridElements.length > 0" style="min-height: 0">
+            <app-grid-display id="grid-container" :grid-data="renderGridData" :metadata="metadata" :elem-css-fn="(elem) => gridUtil.getElemBackgroundCss(elem, renderGridData, globalGridData, metadata.colorConfig.gridBackgroundColor)"/>
+        </div>
+    </div>
+</template>
+
+<script>
+    import $ from '../../js/externals/jquery.js';
+    import {L} from "../../js/util/lquery.js";
+    import {actionService} from "../../js/service/actionService";
+    import {dataService} from "../../js/service/data/dataService";
+    import {areService} from "../../js/service/areService";
+    import {Router} from "./../../js/router.js";
+    import {MetaData} from "../../js/model/MetaData.js";
+    import {urlParamService} from "../../js/service/urlParamService";
+
+    import {Scanner} from "../../js/input/scanning.js";
+    import {Hover} from "../../js/input/hovering.js";
+    import {Clicker} from "../../js/input/clicking.js";
+    import {HuffmanInput} from "../../js/input/huffmanInput";
+    import {DirectionInput} from "../../js/input/directionInput";
+    import {SequentialInput} from "../../js/input/sequentialInput";
+
+    import HeaderIcon from '../../vue-components/components/headerIcon.vue'
+    import {constants} from "../../js/util/constants";
+    import {i18nService} from "../../js/service/i18nService";
+    import {util} from "../../js/util/util";
+    import ScanningModal from '../../vue-components/modals/input/scanningModal.vue'
+    import MouseModal from "../modals/input/mouseModal.vue";
+    import DirectionInputModal from "../modals/input/directionInputModal.vue";
+    import HuffmanInputModal from "../modals/input/huffmanInputModal.vue";
+    import SequentialInputModal from "../modals/input/sequentialInputModal.vue";
+    import {speechService} from "../../js/service/speechService";
+    import {localStorageService} from "../../js/service/data/localStorageService";
+    import {imageUtil} from "../../js/util/imageUtil";
+    import {audioUtil} from "../../js/util/audioUtil.js";
+    import UnlockModal from "../modals/unlockModal.vue";
+    import {MainVue} from "../../js/vue/mainVue.js";
+    import {stateService} from "../../js/service/stateService.js";
+    import { systemActionService } from '../../js/service/systemActionService';
+    import AppGridDisplay from '../grid-display/appGridDisplay.vue';
+    import { gridUtil } from '../../js/util/gridUtil';
+    import { collectElementService } from '../../js/service/collectElementService';
+    import { predictionService } from '../../js/service/predictionService';
+    import { liveElementService } from '../../js/service/liveElementService';
+    import { GridElement } from '../../js/model/GridElement';
+    import { kioskService } from '../../js/service/kioskService';
+    import GroqRecentModal from '../modals/groqRecentModal.vue';
+    import { groqService } from '../../js/service/groqService';
+
+    let vueApp = null;
+    let UNLOCK_COUNT = 8;
+    let modalTypes = {
+        MODAL_SCANNING: 'MODAL_SCANNING',
+        MODAL_MOUSE: 'MODAL_MOUSE',
+        MODAL_DIRECTION: 'MODAL_DIRECTION',
+        MODAL_HUFFMAN: 'MODAL_HUFFMAN',
+        MODAL_SEQUENTIAL: 'MODAL_SEQUENTIAL',
+        MODAL_UNLOCK: 'MODAL_UNLOCK',
+        MODAL_GROQ_RECENT: 'MODAL_GROQ_RECENT'
+    };
+
+    let vueConfig = {
+        props: {
+            gridId: String,
+            skipThumbnailCheck: Boolean
+        },
+        data() {
+            return {
+                globalGridData: null,
+                renderGridData: null,
+                showGrid: false,
+                metadata: null,
+                updatedMetadataDoc: null,
+                scanner: null,
+                hover: null,
+                clicker: null,
+                directionInput: null,
+                seqInput: null,
+                huffmanInput: null,
+                inputMethodsInitialized: false,
+                showModal: null,
+                modalTypes: modalTypes,
+                unlockCount: UNLOCK_COUNT,
+                unlockCounter: UNLOCK_COUNT,
+                MainVue: MainVue,
+                highlightTimeoutHandler: null,
+                highlightedElementId: null,
+                systemActionService: systemActionService,
+                gridUtil: gridUtil,
+                groqSubtitleText: null,
+                groqSubtitleTimeout: null,
+                groqStatus: groqService.getStatus()
+            }
+        },
+        computed: {
+            isGroqActive() {
+                if (!this.metadata) return false;
+                let appSettings = null;
+                try {
+                    appSettings = localStorageService.getAppSettings();
+                } catch (e) {}
+                return !!(this.metadata.activateGroqGrammarAPI || (appSettings && appSettings.activateGroqGrammarAPI));
+            },
+            subtitleFontClass() {
+                return (this.metadata && this.metadata.textConfig && this.metadata.textConfig.fontFamily) || '';
+            },
+            formattedSubtitleText() {
+                if (!this.groqSubtitleText) return '';
+                let convertMode = this.metadata && this.metadata.textConfig ? this.metadata.textConfig.convertMode : null;
+                return util.convertLowerUppercase(this.groqSubtitleText, convertMode);
+            },
+            groqStatusTooltip() {
+                if (this.groqStatus === 'cache') {
+                    return this.$t('groqStatusCache');
+                } else if (this.groqStatus === 'fallback' || this.groqStatus === 'offline') {
+                    return this.$t('groqStatusOffline');
+                }
+                return this.$t('groqStatusOnline');
+            }
+        },
+        components: {
+            AppGridDisplay,
+            UnlockModal,
+            SequentialInputModal,
+            HuffmanInputModal,
+            DirectionInputModal,
+            MouseModal,
+            ScanningModal, HeaderIcon,
+            GroqRecentModal
+        },
+        methods: {
+            onGroqPhraseSpoken(e, data) {
+                if (!data || !data.text) return;
+                this.groqSubtitleText = data.text;
+                if (data.status) {
+                    this.groqStatus = data.status;
+                }
+                if (this.groqSubtitleTimeout) {
+                    clearTimeout(this.groqSubtitleTimeout);
+                }
+                this.groqSubtitleTimeout = setTimeout(() => {
+                    if (vueApp) {
+                        vueApp.groqSubtitleText = null;
+                    }
+                }, 3800);
+            },
+            onGroqStatusChanged(e, status) {
+                this.groqStatus = status;
+            },
+            openModal(modalType) {
+                this.showModal = modalType;
+                stopInputMethods();
+            },
+            lock() {
+                let thiz = this;
+                thiz.metadata.locked = true;
+                thiz.unlockCounter = UNLOCK_COUNT;
+                localStorageService.save('AG_APP_LOCKED', 'true');
+                this.setViewPropsLocked();
+                kioskService.lockApp();
+                dataService.saveMetadata(thiz.metadata);
+            },
+            unlock(force) {
+                let thiz = this;
+                if (!force && localStorageService.getAppSettings().unlockPasscode) {
+                    thiz.showModal = modalTypes.MODAL_UNLOCK;
+                    return;
+                }
+                thiz.unlockCounter--;
+                util.debounce(function () {
+                    thiz.unlockCounter = UNLOCK_COUNT;
+                }, 3000);
+                if (thiz.unlockCounter === 0 || force) {
+                    thiz.metadata.locked = false;
+                    thiz.unlockCounter = UNLOCK_COUNT;
+                    localStorageService.save('AG_APP_LOCKED', 'false');
+                    this.setViewPropsUnlocked();
+                    kioskService.unlockApp();
+                    dataService.saveMetadata(thiz.metadata);
+                }
+            },
+            setViewPropsLocked() {
+                $(document).trigger(constants.EVENT_SIDEBAR_CLOSE);
+                $(document).trigger(constants.EVENT_UI_LOCKED);
+
+                // prevent zoom
+                $('#viewPortMeta').attr('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+                $('#gridView').on('touchmove', this.preventZoomHandler);
+            },
+            setViewPropsUnlocked() {
+                $(document).trigger(constants.EVENT_SIDEBAR_OPEN);
+                $(document).trigger(constants.EVENT_UI_UNLOCKED);
+
+                kioskService.unlockApp();
+
+                //enable zoom
+                $('#viewPortMeta').attr('content', 'width=device-width, initial-scale=1');
+                $('body').attr('touch-action', '');
+                $('#gridView').off('touchmove', this.preventZoomHandler);
+            },
+            preventZoomHandler(event) {
+                event.preventDefault();
+            },
+            initKioskAndFullscreenOnceReady() {
+                let appSettings = localStorageService.getAppSettings() || {};
+                let autoLock = !!appSettings.autoLockOnStartup;
+                let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
+                let pinApp = !!appSettings.pinAppOnLock;
+
+                // 1. Establecer el estado de bloqueo si está activo en configuración o metadata
+                if (autoLock || this.metadata.locked) {
+                    this.metadata.locked = true;
+                    this.unlockCounter = UNLOCK_COUNT;
+                    localStorageService.save('AG_APP_LOCKED', 'true');
+                    this.setViewPropsLocked();
+                    dataService.saveMetadata(this.metadata);
+                }
+
+                // 2. Establecer la pantalla completa visual si está activa en configuración
+                if (autoFullscreen) {
+                    this.metadata.fullscreen = true;
+                }
+
+                // 3. Aplicar fijación (kiosk/lockTask) y pantalla completa una vez que la app está iniciada
+                const applyKioskAndFullscreen = () => {
+                    if (autoFullscreen && !util.isFullscreen()) {
+                        try {
+                            let p = util.openFullscreen();
+                            if (p && p.catch) p.catch(() => {});
+                        } catch (e) {}
+                    }
+                    if (autoLock || this.metadata.locked || pinApp) {
+                        try {
+                            kioskService.lockApp({ fullscreen: autoFullscreen });
+                        } catch (e) {}
+                    }
+                };
+
+                // Ejecutar inmediatamente al haberse completado la iniciación de la app
+                applyKioskAndFullscreen();
+
+                // Si el navegador web de escritorio restringe la pantalla completa sin gesto previo del usuario,
+                // aseguramos que se active de forma transparente en la primera interacción (toque, clic o tecla)
+                if (autoFullscreen || pinApp || autoLock || this.metadata.locked) {
+                    let engaged = false;
+                    const onUserInteraction = () => {
+                        if (engaged) return;
+                        engaged = true;
+                        applyKioskAndFullscreen();
+                    };
+                    window.addEventListener('pointerdown', onUserInteraction, { once: true, capture: true });
+                    window.addEventListener('click', onUserInteraction, { once: true, capture: true });
+                    window.addEventListener('keydown', onUserInteraction, { once: true, capture: true });
+                }
+            },
+            reloadInputMethods() {
+                this.initInputMethods({reload: true});
+            },
+            async initInputMethods(options = {}) {
+                options.continueInputMethods = options.continueInputMethods || false;
+                options.reload = options.reload || false;
+                if (this.inputMethodsInitialized) {
+                    stopInputMethods();
+                }
+                if (options.reload) {
+                    let metadata = await dataService.getMetadata();
+                    this.metadata = JSON.parse(JSON.stringify(metadata));
+                    initContextmenu(); //in order to update visualization of active input methods in context menu
+                }
+                let thiz = this;
+                let inputConfig = thiz.metadata.inputConfig;
+                let selectionListener = (item) => {
+                    this.stopHighlightElements();
+                    L.removeAddClass(item, 'selected');
+                    actionService.doAction(thiz.renderGridData, item.id);
+                };
+                let activeListener = (items, wrap, restarted) => {
+                    if (!Array.isArray(items)) {
+                        items = [items];
+                    }
+                    if (inputConfig.globalReadActive && items && items.length === 1 && items[0]) {
+                        let text = items[0].ariaLabel || '';
+                        let separatorIndex = text.indexOf(", ");
+                        if (!inputConfig.globalReadAdditionalActions && separatorIndex !== -1 && separatorIndex !== 0) {
+                            text = text.substring(0, separatorIndex);
+                        }
+                        speechService.speak(text, {
+                            rate: inputConfig.globalReadActiveRate || 1
+                        });
+                    }
+
+                    if (inputConfig.globalBeepFeedback) {
+                        if (restarted) {
+                            audioUtil.beepHighDouble();
+                        } else if (wrap) {
+                            audioUtil.beepHigh();
+                        } else {
+                            audioUtil.beep();
+                        }
+                    }
+                };
+
+                if (inputConfig.seqEnabled) {
+                    thiz.seqInput = SequentialInput.getInstanceFromConfig(inputConfig, {
+                        itemSelector: '.element-container:not([data-empty="true"])',
+                        selectionListener: selectionListener,
+                        activeListener: activeListener
+                    });
+                    thiz.seqInput.start(options.continueInputMethods);
+                }
+
+                if (inputConfig.dirEnabled) {
+                    thiz.directionInput = DirectionInput.getInstanceFromConfig(inputConfig, '.element-container:not([data-empty="true"])', 'scanFocus', selectionListener);
+                    thiz.directionInput.start();
+                }
+
+                if (inputConfig.huffEnabled) {
+                    this.huffmanInput = HuffmanInput.getInstanceFromConfig(inputConfig, '.element-container', 'scanFocus', 'scanInactive', selectionListener);
+                    this.huffmanInput.start();
+                }
+
+                if (inputConfig.scanEnabled) {
+                    thiz.scanner = Scanner.getInstanceFromConfig(inputConfig, '.element-container:not([data-empty="true"])', 'scanFocus', 'scanInactive');
+                    thiz.scanner.setSelectionListener(selectionListener);
+                    thiz.scanner.setActiveListener(activeListener);
+                    thiz.scanner.startScanning(options.continueInputMethods);
+                }
+
+                if (inputConfig.hoverEnabled) {
+                    thiz.hover = Hover.getInstanceFromConfig(inputConfig, '.element-container', {
+                        activeListener: activeListener,
+                        containerClass: '.grid-container li'
+                    });
+                    thiz.hover.setSelectionListener(selectionListener);
+                    thiz.hover.startHovering();
+                } else {
+                    $('#touchElement').hide();
+                }
+
+                if (inputConfig.mouseclickEnabled || inputConfig.mouseDoubleClickEnabled) {
+                    thiz.clicker = Clicker.getInstanceFromConfig(inputConfig, '.element-container');
+                    thiz.clicker.setSelectionListener(selectionListener);
+                    thiz.clicker.startClickcontrol();
+                }
+                this.inputMethodsInitialized = true;
+            },
+            async onNavigateEvent(event, gridData, params) {
+                await this.loadGrid(gridData, { continueInputMethods: true });
+            },
+            async loadGrid(gridData, options = {}) {
+                options.continueInputMethods = options.continueInputMethods || false;
+                options.forceReload = options.forceReload || false;
+                collectElementService.clearCollectElements();
+                if (gridData && (options.forceReload || !this.renderGridData || this.renderGridData.id !== gridData.id)) {
+                    if (gridUtil.hasAREModel(gridData)) {
+                        let areModel = gridUtil.getAREModel(gridData);
+                        areService.uploadAndStartModel(areModel.dataBase64, gridUtil.getAREURL(gridData), areModel.fileName);
+                    }
+
+                    // this line before recalculateRenderGrid since it changes gridData!
+                    let updateThumbnail = gridUtil.hasOutdatedThumbnail(gridData) && !this.skipThumbnailCheck;
+
+                    await this.recalculateRenderGrid(gridData);
+                    Router.addToGridHistory(this.renderGridData.id);
+
+                    if (updateThumbnail) {
+                        this.skipThumbnailCheck = true;
+                        imageUtil.allImagesLoaded().then(async () => {
+                            let screenshot = await imageUtil.getScreenshot("#grid-container");
+                            let thumbnail = {
+                                data: screenshot,
+                                shouldUpdate: false
+                            };
+                            dataService.saveThumbnail(this.renderGridData.id, thumbnail);
+                        })
+                    }
+
+                    if (this.metadata.lastOpenedGridId !== gridData.id) {
+                        this.metadata.lastOpenedGridId = gridData.id;
+                        await dataService.saveMetadata(this.metadata);
+                    }
+                }
+
+                await this.$nextTick();
+                initContextmenu();
+                this.initInputMethods(options);
+                this.highlightElements();
+                await predictionService.initWithElements(this.renderGridData.gridElements);
+                collectElementService.initWithGrid(this.renderGridData);
+                liveElementService.initWithElements(this.renderGridData.gridElements);
+                $(document).trigger(constants.EVENT_GRID_LOADED);
+            },
+            highlightElements() {
+                clearTimeout(this.highlightTimeoutHandler);
+                let params = urlParamService.getSearchQueryParams();
+                if (params.highlightIds) {
+                    $(`#${params.highlightIds[0]}`).addClass('highlight');
+                    this.highlightTimeoutHandler = setTimeout(() => {
+                        this.stopHighlightElements();
+                    }, 15000);
+                    this.highlightedElementId = params.highlightIds[0];
+                    params.highlightIds.shift();
+                    params.highlightIds = params.highlightIds.length > 0 ? params.highlightIds : null;
+                    urlParamService.setParamsToSearchQuery(params);
+                }
+            },
+            stopHighlightElements() {
+                if (this.highlightedElementId) {
+                    $(`#${this.highlightedElementId}`).removeClass('highlight');
+                    this.highlightedElementId = null;
+                }
+            },
+            toEditGrid() {
+                Router.toEditGrid(this.renderGridData.id);
+            },
+            openInputConfigMenu(event) {
+                if (event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
+                $('#inputConfigButton').contextMenu();
+            },
+            toLogin() {
+                Router.toLogin();
+            },
+            async onExternalUpdate(event, updatedIds, updatedDocs, deletedIds) {
+                let thiz = this;
+                if (!vueApp) {
+                    setTimeout(() => {
+                        thiz.onExternalUpdate(event, updatedIds, updatedDocs);
+                    }, 500);
+                    return;
+                }
+                if (deletedIds.includes(vueApp.gridId)) {
+                    Router.toManageGrids();
+                    return;
+                }
+                log.debug('got update event, ids updated:' + updatedIds);
+                let updatedGridDoc = updatedDocs.filter(doc => (vueApp.renderGridData && doc.id === vueApp.renderGridData.id))[0];
+                let hasUpdatedGlobalGrid = updatedDocs.filter(doc => (this.metadata && doc.id === this.metadata.globalGridId)).length > 0;
+                this.updatedMetadataDoc = updatedDocs.filter(doc => (vueApp.metadata && doc.id === vueApp.metadata.id))[0] || this.updatedMetadataDoc;
+                if (updatedGridDoc) {
+                    let gridDoc = await dataService.getGrid(updatedGridDoc.id); // get again in order to be sure to have correct revision on conflicts
+                    let contentChanged = !vueApp.renderGridData || 
+                        JSON.stringify(gridDoc.gridElements) !== JSON.stringify(vueApp.renderGridData.gridElements) ||
+                        gridDoc.name !== vueApp.renderGridData.name;
+                    if (contentChanged) {
+                        vueApp.loadGrid(gridDoc, { continueInputMethods: true, forceReload: true });
+                    }
+                } else if (hasUpdatedGlobalGrid) {
+                    let gridData = await dataService.getGrid(vueApp.renderGridData.id, false, true);
+                    this.globalGridData = await dataService.getGlobalGrid();
+                    vueApp.loadGrid(gridData, { continueInputMethods: true, forceReload: true });
+                }
+                if (localStorageService.getAppSettings().syncNavigation) {
+                    if (this.updatedMetadataDoc && this.updatedMetadataDoc.lastOpenedGridId && vueApp.renderGridData && this.updatedMetadataDoc.lastOpenedGridId !== vueApp.renderGridData.id && this.updatedMetadataDoc.lastOpenedGridId !== this.gridId) {
+                        dataService.getGrid(this.updatedMetadataDoc.lastOpenedGridId).then(toGrid => {
+                            if (!gridUtil.hasOutdatedThumbnail(toGrid)) {
+                                Router.toLastOpenedGrid();
+                            }
+                        });
+                        return;
+                    }
+                    if (this.updatedMetadataDoc && this.updatedMetadataDoc.fullscreen !== vueApp.metadata.fullscreen) {
+                        if (this.updatedMetadataDoc.fullscreen) {
+                            vueApp.metadata.fullscreen = true;
+                        } else {
+                            vueApp.metadata.fullscreen = false;
+                            $(document).trigger(constants.EVENT_SIDEBAR_OPEN);
+                        }
+                    }
+                    if (this.updatedMetadataDoc && this.updatedMetadataDoc.locked !== vueApp.metadata.locked) {
+                        if (this.updatedMetadataDoc.locked) {
+                            vueApp.metadata.locked = true;
+                            vueApp.setViewPropsLocked();
+                        } else {
+                            vueApp.metadata.locked = false;
+                            vueApp.setViewPropsUnlocked();
+                        }
+                    }
+                }
+                if (this.updatedMetadataDoc) {
+                    if (vueApp && vueApp.metadata && vueApp.metadata.locked) {
+                        this.updatedMetadataDoc.locked = true;
+                    }
+                    this.metadata = this.updatedMetadataDoc;
+                }
+            },
+            async recalculateRenderGrid(gridData) {
+                this.showGrid = false;
+                let globalGrid = null;
+                // Deep copy so we NEVER mutate the original gridData or database cache
+                let localGridData = JSON.parse(JSON.stringify(gridData));
+                localGridData = gridUtil.fillFreeSpaces(localGridData, GridElement.ELEMENT_TYPE_UI_FILLER);
+                if (localGridData.showGlobalGrid) {
+                    let sourceGlobalGrid = this.globalGridData;
+                    if (localGridData.globalGridId) { // custom global grid
+                        sourceGlobalGrid = await dataService.getGrid(localGridData.globalGridId, false, true);
+                    }
+                    if (sourceGlobalGrid) {
+                        let localGlobalGrid = JSON.parse(JSON.stringify(sourceGlobalGrid));
+                        if (gridUtil.hasDynamicGridPlaceholder(localGlobalGrid)) {
+                            localGlobalGrid = gridUtil.fillFreeSpaces(localGlobalGrid, GridElement.ELEMENT_TYPE_UI_FILLER);
+                        }
+                        this.renderGridData = gridUtil.mergeGrids(localGridData, localGlobalGrid, {
+                            globalGridHeightPercentage: this.metadata.globalGridHeightPercentage,
+                            noDeepCopy: false
+                        });
+                    } else {
+                        this.renderGridData = localGridData;
+                    }
+                } else {
+                    this.renderGridData = localGridData;
+                }
+                this.renderGridData = gridUtil.adaptFirstRowHeight(this.renderGridData, this.metadata.firstRowHeightFactor);
+                this.renderGridData.minColumnCount = gridUtil.getWidthWithBounds(this.renderGridData);
+                this.renderGridData.rowCount = gridUtil.getHeightWithBounds(this.renderGridData);
+                this.renderGridData.gridElements = this.renderGridData.gridElements.filter(e => !e.hidden);
+
+                // Check for local toggle level first, otherwise use synchronized metadata level
+                let isToggled = localStorageService.get(localStorageService.KEY_CURRENT_TOGGLE_LEVEL);
+                let effectiveLevel = isToggled ? localStorageService.getJSON(localStorageService.KEY_CURRENT_TOGGLE_LEVEL) : this.metadata.vocabularyLevel;
+
+                if (effectiveLevel) {
+                    let globalGridElements = globalGrid ? globalGrid.gridElements : [];
+                    let globalGridElemIds = globalGridElements.map(e => e.id);
+                    let normalGridElements = this.renderGridData.gridElements.filter(e => !globalGridElemIds.includes(e.id));
+                    let noneHasVocabLevelGlobal = globalGridElements.every(e => !e.vocabularyLevel);
+                    let noneHasVocabLevelNormal = normalGridElements.every(e => !e.vocabularyLevel);
+                    this.renderGridData.gridElements = this.renderGridData.gridElements.filter(e => {
+                        let elemFitsVocabLevel = e.vocabularyLevel && e.vocabularyLevel <= effectiveLevel;
+                        if (globalGridElemIds.includes(e.id)) {
+                            // is elem in global grid
+                            return noneHasVocabLevelGlobal || elemFitsVocabLevel || e.type !== GridElement.ELEMENT_TYPE_NORMAL;
+                        } else {
+                            // is elem in normal grid
+                            return noneHasVocabLevelNormal || elemFitsVocabLevel || e.type !== GridElement.ELEMENT_TYPE_NORMAL;
+                        }
+                    });
+                }
+                this.showGrid = true;
+                stateService.setCurrentGrid(this.renderGridData);
+            },
+            onSidebarOpen() {
+                if (!vueApp || !vueApp.metadata) {
+                    return;
+                }
+                vueApp.metadata.fullscreen = false;
+                $(document).trigger(constants.EVENT_GRID_RESIZE);
+            },
+            resizeListener() {
+                let thiz = this;
+                util.debounce(function () {
+                    if (thiz.huffmanInput) {
+                        thiz.huffmanInput.reinit();
+                    }
+                }, 500);
+            },
+            fullscreenChangeListener() {
+                let isFs = util.isFullscreen();
+                if (this.metadata) {
+                    this.metadata.fullscreen = isFs;
+                }
+                $(document).trigger(constants.EVENT_GRID_RESIZE);
+            },
+            contextMenuListener(event) {
+                event.preventDefault();
+            },
+            async metadataUpdated(event, newMetadata) {
+                if (newMetadata) {
+                    this.metadata = newMetadata;
+                } else {
+                    let m = await dataService.getMetadata();
+                    if (this.metadata && this.metadata.locked) {
+                        m.locked = true;
+                    }
+                    this.metadata = m;
+                }
+            },
+            async rerenderGrid() {
+                if (this.renderGridData) {
+                    // Reload the grid with fresh data without updating metadata
+                    let freshGridData = await dataService.getGrid(this.renderGridData.id);
+                    await this.loadGrid(freshGridData, { forceReload: true });
+                }
+            }
+        },
+        created() {
+            $(document).on(constants.EVENT_DB_PULL_UPDATED, this.onExternalUpdate);
+            $(document).on(constants.EVENT_SIDEBAR_OPEN, this.onSidebarOpen);
+            $(document).on(constants.EVENT_NAVIGATE_GRID_IN_VIEWMODE, this.onNavigateEvent);
+            document.addEventListener('contextmenu', this.contextMenuListener);
+            document.addEventListener('fullscreenchange', this.fullscreenChangeListener);
+            document.addEventListener('webkitfullscreenchange', this.fullscreenChangeListener);
+            document.addEventListener('mozfullscreenchange', this.fullscreenChangeListener);
+            document.addEventListener('MSFullscreenChange', this.fullscreenChangeListener);
+            window.addEventListener('resize', this.resizeListener, true);
+            $(document).on(constants.EVENT_GRID_RESIZE, this.resizeListener);
+            $(document).on(constants.EVENT_METADATA_UPDATED, this.metadataUpdated);
+            $(document).on(constants.EVENT_GRID_RERENDER, this.rerenderGrid);
+        },
+        beforeDestroy() {
+            $(document).off(constants.EVENT_DB_PULL_UPDATED, this.onExternalUpdate);
+            $(document).off(constants.EVENT_SIDEBAR_OPEN, this.onSidebarOpen);
+            $(document).off(constants.EVENT_NAVIGATE_GRID_IN_VIEWMODE, this.onNavigateEvent);
+            document.removeEventListener('contextmenu', this.contextMenuListener);
+            document.removeEventListener('fullscreenchange', this.fullscreenChangeListener);
+            document.removeEventListener('webkitfullscreenchange', this.fullscreenChangeListener);
+            document.removeEventListener('mozfullscreenchange', this.fullscreenChangeListener);
+            document.removeEventListener('MSFullscreenChange', this.fullscreenChangeListener);
+            window.removeEventListener('resize', this.resizeListener, true);
+            $(document).off(constants.EVENT_GRID_RESIZE, this.resizeListener);
+            $(document).off(constants.EVENT_METADATA_UPDATED, this.metadataUpdated);
+            $(document).off(constants.EVENT_GRID_RERENDER, this.rerenderGrid);
+            stopInputMethods();
+            if (!this.metadata || !this.metadata.locked) {
+                this.setViewPropsUnlocked();
+            }
+            $.contextMenu('destroy');
+            liveElementService.stop();
+            vueApp = null;
+        },
+        mounted: async function () {
+            vueApp = this;
+
+            let appSettings = localStorageService.getAppSettings() || {};
+            let autoLock = !!appSettings.autoLockOnStartup;
+            let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
+
+            let storedLocked = localStorageService.get('AG_APP_LOCKED');
+            let savedMetadata = await dataService.getMetadata();
+            let metadata = JSON.parse(JSON.stringify(savedMetadata || new MetaData()));
+            metadata.lastOpenedGridId = this.gridId;
+            if (storedLocked !== null && storedLocked !== undefined) {
+                metadata.locked = storedLocked === 'true';
+            } else {
+                metadata.locked = !!(metadata.locked || autoLock || urlParamService.isLocked(true));
+            }
+            if (autoLock) {
+                metadata.locked = true;
+                localStorageService.save('AG_APP_LOCKED', 'true');
+            }
+            metadata.fullscreen = !!(metadata.fullscreen || (autoFullscreen && util.isFullscreen()));
+
+            metadata.inputConfig.scanEnabled = urlParamService.isScanningEnabled() ? true : metadata.inputConfig.scanEnabled;
+            metadata.inputConfig.dirEnabled = urlParamService.isDirectionEnabled() ? true : metadata.inputConfig.dirEnabled;
+            metadata.inputConfig.huffEnabled = urlParamService.isHuffmanEnabled() ? true : metadata.inputConfig.huffEnabled;
+            this.metadata = metadata;
+
+            if (this.metadata.locked) {
+                this.unlockCounter = UNLOCK_COUNT;
+                this.setViewPropsLocked();
+            }
+
+            this.globalGridData = await dataService.getGlobalGrid();
+            let gridData = await dataService.getGrid(this.gridId, false, true);
+            if (!gridData) {
+                log.warn('grid not found! gridId: ' + this.gridId);
+                let grids = await dataService.getGrids(false, true);
+                if (grids && grids[0]) {
+                    gridData = await dataService.getGrid(grids[0].id);
+                } else {
+                    return Router.toManageGrids();
+                }
+            }
+            await this.loadGrid(gridData);
+
+            this.$nextTick(() => {
+                setTimeout(() => {
+                    if (vueApp) {
+                        vueApp.initKioskAndFullscreenOnceReady();
+                    }
+                }, 400);
+            });
+
+            $(document).on(constants.EVENT_GROQ_PHRASE_SPOKEN, this.onGroqPhraseSpoken);
+            $(document).on(constants.EVENT_GROQ_STATUS_CHANGED, this.onGroqStatusChanged);
+        },
+        beforeDestroy() {
+            if (this.groqSubtitleTimeout) {
+                clearTimeout(this.groqSubtitleTimeout);
+            }
+            $(document).off(constants.EVENT_GROQ_PHRASE_SPOKEN, this.onGroqPhraseSpoken);
+            $(document).off(constants.EVENT_GROQ_STATUS_CHANGED, this.onGroqStatusChanged);
+        }
+    };
+
+    function stopInputMethods() {
+        if (!vueApp) {
+            return;
+        }
+        if (vueApp.scanner) vueApp.scanner.destroy();
+        if (vueApp.hover) vueApp.hover.destroy();
+        if (vueApp.clicker) vueApp.clicker.destroy();
+        if (vueApp.directionInput) vueApp.directionInput.destroy();
+        if (vueApp.huffmanInput) vueApp.huffmanInput.destroy();
+        if (vueApp.seqInput) vueApp.seqInput.destroy();
+        vueApp.inputMethodsInitialized = false;
+    }
+
+    function initContextmenu() {
+        $.contextMenu('destroy');
+        let CONTEXT_MOUSE = "CONTEXT_MOUSE";
+        let CONTEXT_SCANNING = "CONTEXT_SCANNING";
+        let CONTEXT_DIRECTION = "CONTEXT_DIRECTION";
+        let CONTEXT_HUFFMAN = "CONTEXT_HUFFMAN";
+        let CONTEXT_SEQUENTIAL = "CONTEXT_SEQUENTIAL";
+
+        function getName(i18nKey, isActive) {
+            let translated = i18nService.t(i18nKey);
+            let activeText = isActive ? ' ' + i18nService.t('activeBracket') : '';
+            return `${translated}${activeText}`;
+        }
+
+        let inputConfig = vueApp.metadata.inputConfig;
+        let mouseTouchEnabled = inputConfig.mouseclickEnabled || inputConfig.hoverEnabled;
+        let contextItems = {
+            CONTEXT_MOUSE: {
+                name: getName('mousetouchInput', mouseTouchEnabled),
+                icon: "fas fa-mouse-pointer",
+                className: mouseTouchEnabled ? 'boldFont' : ''
+            },
+            CONTEXT_SCANNING: {
+                name: getName('scanning', inputConfig.scanEnabled),
+                icon: "fas fa-sort-amount-down",
+                className: inputConfig.scanEnabled ? 'boldFont' : ''
+            },
+            CONTEXT_DIRECTION: {
+                name: getName('directionInput', inputConfig.dirEnabled),
+                icon: "fas fa-arrows-alt",
+                className: inputConfig.dirEnabled ? 'boldFont' : ''
+            },
+            CONTEXT_HUFFMAN: {
+                name: getName('huffmanInput', inputConfig.huffEnabled),
+                icon: "fas fa-ellipsis-h",
+                className: inputConfig.huffEnabled ? 'boldFont' : ''
+            },
+            CONTEXT_SEQUENTIAL: {
+                name: getName('sequentialInput', inputConfig.seqEnabled),
+                icon: "fas fa-arrow-right",
+                className: inputConfig.seqEnabled ? 'boldFont' : ''
+            }
+        };
+
+        $.contextMenu({
+            selector: '#inputConfigButton',
+            appendTo: '#inputConfigMenu',
+            callback: function (key, options) {
+                handleContextMenu(key);
+            },
+            trigger: 'left',
+            items: contextItems,
+            zIndex: 10
+        });
+
+        function handleContextMenu(key, elementId) {
+            switch (key) {
+                case CONTEXT_MOUSE: {
+                    vueApp.openModal(modalTypes.MODAL_MOUSE);
+                    break;
+                }
+                case CONTEXT_SCANNING: {
+                    vueApp.openModal(modalTypes.MODAL_SCANNING);
+                    break;
+                }
+                case CONTEXT_DIRECTION: {
+                    vueApp.openModal(modalTypes.MODAL_DIRECTION);
+                    break;
+                }
+                case CONTEXT_HUFFMAN: {
+                    vueApp.openModal(modalTypes.MODAL_HUFFMAN);
+                    break;
+                }
+                case CONTEXT_SEQUENTIAL: {
+                    vueApp.openModal(modalTypes.MODAL_SEQUENTIAL);
+                    break;
+                }
+            }
+        }
+    }
+
+    export default vueConfig;
+</script>
+
+<style scoped>
+</style>
