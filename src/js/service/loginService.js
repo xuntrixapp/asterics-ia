@@ -361,14 +361,14 @@ function reasonToErrorCode(reason) {
     ) {
         return loginService.ERROR_CODE_UNAUTHORIZED;
     }
-    if (reason && reason.error && typeof reason.error === 'string' && reason.error.toLowerCase() === 'unauthorized') {
+    if (reason && ((reason.error && (reason.error.toLowerCase() === 'unauthorized' || reason.error.toLowerCase() === 'bad request')) || reason.status === 400 || reason.status === 401 || reason.status === 403)) {
         return loginService.ERROR_CODE_UNAUTHORIZED;
     }
     let msg = (reason && (reason.message || (typeof reason === 'string' ? reason : '')) || '').toLowerCase();
     if (msg.includes('network') || msg.includes('fetch')) {
         return loginService.ERROR_CODE_NETWORK_ERROR;
     }
-    return loginService.ERROR_CODE_NETWORK_ERROR;
+    return loginService.ERROR_CODE_UNAUTHORIZED;
 }
 
 function autoRetryLogin(user, hashedPassword, saveUser) {
