@@ -1,5 +1,6 @@
 import $ from '../../externals/jquery.js';
 import PouchDB from 'PouchDB';
+import superlogin from 'superlogin-client';
 import { localStorageService } from './localStorageService';
 import { encryptionService } from './encryptionService';
 import { constants } from '../../util/constants';
@@ -237,7 +238,37 @@ function PouchDbAdapter(databaseName, remoteCouchDbAddress, onlyRemote, justCrea
      * @return {*}
      */
     function openDbInternal(dbNameOrAddress, isOnlineDb) {
-        let dbHandler = new PouchDB(dbNameOrAddress, { auto_compaction: true });
+        let options = { auto_compaction: true };
+        let targetAddress = dbNameOrAddress;
+        if (isOnlineDb) {
+            let session = superlogin.getSession();
+            if (session && session.token && session.password) {
+                options.fetch = function (url, opts) {
+                    opts = opts || {};
+                    opts.headers = opts.headers || {};
+                    let authHeader = 'Bearer ' + session.token + ':' + session.password;
+                    if (typeof opts.headers.set === 'function') {
+                        opts.headers.set('Authorization', authHeader);
+                    } else {
+                        opts.headers['Authorization'] = authHeader;
+                    }
+                    return PouchDB.fetch(url, opts);
+                };
+                options.auth = {
+                    username: session.token,
+                    password: session.password
+                };
+                if (typeof targetAddress === 'string' && targetAddress.startsWith('http') && !targetAddress.includes('@')) {
+                    try {
+                        let urlObj = new URL(targetAddress);
+                        urlObj.username = session.token;
+                        urlObj.password = session.password;
+                        targetAddress = urlObj.toString();
+                    } catch (e) { }
+                }
+            }
+        }
+        let dbHandler = new PouchDB(targetAddress, options);
         return dbHandler.info().then(function (info) {
             log.debug(dbNameOrAddress + ' info:');
             log.debug(info);

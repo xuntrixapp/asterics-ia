@@ -392,8 +392,7 @@ function getConfig() {
         // Specific endpoint for social authentication and social link popups (defaults to `${location.origin}${baseUrl}`)
         //socialUrl: 'http://' + location.hostname + ':3001/auth',
         // A list of API endpoints to automatically add the Authorization header to
-        // By default the host the browser is pointed to will be added automatically
-        //endpoints: ['api.example.com'],
+        endpoints: ['login1.couchdb.asterics-foundation.org', 'db2.couchdb.asterics-foundation.org', 'db1.couchdb.asterics-foundation.org', 'couchdb.asterics-foundation.org'],
         // Set this to true if you do not want the URL bar host automatically added to the list
         noDefaultEndpoint: false,
         // Where to save your session token: localStorage ('local') or sessionStorage ('session'), default: 'local'
