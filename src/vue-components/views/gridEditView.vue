@@ -892,11 +892,13 @@
 
         var itemsGlobal = {
             'CONTEXT_NEW_SINGLE': {name: i18nService.t('newElement'), icon: "fas fa-plus"},
+            'CONTEXT_NEW_COMIC_BUBBLE': {name: i18nService.t('newComicBubble'), icon: "fas fa-comment-dots"},
             'CONTEXT_NEW_MASS': {name: i18nService.t('manyNewElements'), icon: "fas fa-clone"},
             CONTEXT_ACTION_PASTE: {name: i18nService.t('paste'), icon: "far fa-clipboard"},
             CONTEXT_NEW_GROUP_REDUCED: JSON.parse(JSON.stringify(contextMenuNewGroup))
         };
         itemsGlobal[CONTEXT_NEW_GROUP_REDUCED].items[CONTEXT_NEW_SINGLE].visible = false;
+        itemsGlobal[CONTEXT_NEW_GROUP_REDUCED].items[CONTEXT_NEW_COMIC_BUBBLE].visible = false;
         itemsGlobal[CONTEXT_NEW_GROUP_REDUCED].items[CONTEXT_NEW_MASS].visible = false;
         itemsGlobal[CONTEXT_NEW_GROUP_REDUCED].items[CONTEXT_NEW_CHILD_PLACEHOLDER].disabled = childPlaceholderDisabledFn;
         itemsGlobal[CONTEXT_NEW_GROUP_REDUCED].name = i18nService.t('newSpecialElement');
