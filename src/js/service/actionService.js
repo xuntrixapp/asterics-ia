@@ -59,11 +59,11 @@ actionService.doAction = async function (gridIdOrObject, gridElementId) {
         return;
     }
     let now = new Date().getTime();
-    if (now - lastNavigationTime < 350) {
+    if (now - lastNavigationTime < 100) {
         log.debug('doAction omitido: demasiado pronto tras navegación (' + (now - lastNavigationTime) + 'ms)');
         return;
     }
-    let minPause = Math.max(minActionPauseMs || 0, 180);
+    let minPause = minActionPauseMs > 0 ? minActionPauseMs : 50;
     if (now - lastActionTime < minPause) {
         log.debug('doAction omitido: cooldown de acción (' + (now - lastActionTime) + 'ms)');
         return;

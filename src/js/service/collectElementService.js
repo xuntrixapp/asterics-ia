@@ -480,16 +480,23 @@ async function updateCollectElements(isSecondTry) {
                 `${getPrintText()}, ${i18nService.t('ELEMENT_TYPE_COLLECT')}`
             );
             let html = '';
-            let height =
+            let rawHeight =
                 $(`#${collectElement.id} .collect-container`).prop('clientHeight') ||
-                outerContainerJqueryElem.prop('clientHeight'); // consider scrollbar height
+                outerContainerJqueryElem.prop('clientHeight') ||
+                outerContainerJqueryElem.height() ||
+                outerContainerJqueryElem.parent().height();
+            let height = (typeof rawHeight === 'number' && !isNaN(rawHeight) && rawHeight > 20) ? rawHeight : 70;
 
-            let width = outerContainerJqueryElem.width();
+            let rawWidth = outerContainerJqueryElem.width();
+            let width = (typeof rawWidth === 'number' && !isNaN(rawWidth) && rawWidth > 50) ? rawWidth : 300;
             let imgMargin = width < 400 ? 2 : width < 700 ? 3 : 5;
-            let showLabel = collectElement.showLabels;
-            let textPercentage = 0.85; // precentage of text height compared to text-line height
-            let imagePercentage = collectElement.imageHeightPercentage / 100; // percentage of total height used for image
-            let useSingleLine = collectElement.singleLine;
+            let showLabel = collectElement.showLabels !== false;
+            let textPercentage = 0.85; // percentage of text height compared to text-line height
+            let imgHeightPct = (typeof collectElement.imageHeightPercentage === 'number' && !isNaN(collectElement.imageHeightPercentage))
+                ? collectElement.imageHeightPercentage
+                : 80;
+            let imagePercentage = Math.max(0.2, Math.min(1.0, imgHeightPct / 100)); // percentage of total height used for image
+            let useSingleLine = collectElement.singleLine !== false;
             let imageCount = collectedElements.length;
             let normalImageContainerHeight = height * imagePercentage;
             let imgContainerHeight = showLabel ? normalImageContainerHeight : height;
@@ -497,54 +504,64 @@ async function updateCollectElements(isSecondTry) {
             for (const elem of collectedElements) {
                 let imageData = getImageData(elem);
                 if (imageData) {
-                    if (elem.image.searchProviderName) {
+                    if (elem.image && elem.image.searchProviderName) {
                         imageRatios.push(1);
                     } else if (imgDimensionsCache.has(imageData)) {
                         imageRatios.push(imgDimensionsCache.get(imageData));
                     } else {
-                        let dim = await imageUtil.getImageDimensionsFromDataUrl(imageData);
-                        imageRatios.push(dim.ratio);
-                        imgDimensionsCache.set(imageData, dim.ratio);
+                        try {
+                            let dim = await imageUtil.getImageDimensionsFromDataUrl(imageData);
+                            let r = (dim && dim.ratio && !isNaN(dim.ratio)) ? dim.ratio : 1;
+                            imageRatios.push(r);
+                            imgDimensionsCache.set(imageData, r);
+                        } catch (e) {
+                            imageRatios.push(1);
+                        }
                     }
                 }
             }
-            let maxImgRatio = Math.max(...imageRatios) || 1;
-            let maxImages = Math.floor(width / (imgContainerHeight * maxImgRatio));
+            let validRatios = imageRatios.filter(r => typeof r === 'number' && !isNaN(r) && r > 0);
+            let maxImgRatio = validRatios.length > 0 ? Math.max(...validRatios) : 1;
+            let maxImages = Math.floor(width / Math.max(20, (imgContainerHeight * maxImgRatio)));
             let numLines = 1;
-            while (maxImages < imageCount && !useSingleLine) {
+            while (maxImages < imageCount && !useSingleLine && numLines < 5) {
                 numLines++;
-                maxImages = Math.floor(width / ((imgContainerHeight * maxImgRatio) / numLines)) * numLines;
+                maxImages = Math.floor(width / Math.max(20, ((imgContainerHeight * maxImgRatio) / numLines))) * numLines;
             }
             imgContainerHeight = imgContainerHeight / numLines;
-            let imgHeight = imgContainerHeight - imgMargin * 2;
-            let lineHeight = height / numLines - normalImageContainerHeight;
-            let textHeight = lineHeight * textPercentage;
+            let imgHeight = Math.max(16, Math.floor(imgContainerHeight - imgMargin * 2));
+            let lineHeight = Math.max(12, Math.floor(height / numLines - normalImageContainerHeight));
+            let textHeight = Math.max(10, Math.floor(lineHeight * textPercentage));
             let totalWidth = 0;
             for (const [index, collectedElement] of collectedElements.entries()) {
                 let label = getPrintTextOfElement(collectedElement);
                 let image = getImageData(collectedElement);
-                let elemWidth = imgHeight * imageRatios[index] || imgHeight;
+                let currentRatio = (typeof imageRatios[index] === 'number' && !isNaN(imageRatios[index]) && imageRatios[index] > 0) ? imageRatios[index] : 1;
+                let elemWidth = Math.max(16, Math.floor(imgHeight * currentRatio));
                 if (collectElement.showFullLabels) {
-                    let textWidth = fontUtil.getTextWidth(label, outerContainerJqueryElem[0], `${textHeight}px`);
-                    elemWidth = Math.max(elemWidth, textWidth + 2 * imgMargin);
+                    try {
+                        let textWidth = fontUtil.getTextWidth(label, outerContainerJqueryElem[0], `${textHeight}px`);
+                        elemWidth = Math.max(elemWidth, textWidth + 2 * imgMargin);
+                    } catch (e) {}
                 }
                 let marked = markedImageIndex === index;
                 let imgHTML = null;
                 if (image) {
-                    imgHTML = `<img src="${image}" height="${imgHeight}" style="height: ${imgHeight}px" onerror="handleCollectElementImageError()" ${_useCrossorignAttribute ? 'crossorigin="anonymous"' : ''}/>`;
+                    imgHTML = `<img src="${image}" height="${imgHeight}" style="height: ${imgHeight}px; max-height: ${imgHeight}px; width: auto; object-fit: contain;" alt="${label || ''}"/>`;
                     totalWidth += elemWidth + 2 * imgMargin;
                 } else {
                     let fontSizeFactor = collectElement.textElemSizeFactor || 1.5;
-                    let fontSize = textHeight * fontSizeFactor;
-                    elemWidth =
-                        fontUtil.getTextWidth(label, outerContainerJqueryElem[0], `${fontSize}px`) + 2 * imgMargin;
+                    let fontSize = Math.max(10, Math.floor(textHeight * fontSizeFactor));
+                    try {
+                        elemWidth = fontUtil.getTextWidth(label, outerContainerJqueryElem[0], `${fontSize}px`) + 2 * imgMargin;
+                    } catch (e) {}
                     totalWidth += elemWidth + 4 * imgMargin;
                     imgHTML = `<div style="padding: ${imgMargin}px; font-size: ${fontSize}px; width: ${elemWidth}px; height: ${imgHeight}px; display: flex; justify-content: center; align-items: center; text-align: center;"><span>${label}</span></div>`;
                 }
                 html += `<div id="collect${index}" style="display: flex; flex:0; justify-content: center; flex-direction: column; padding: ${imgMargin}px; color: ${textColor}; ${
                     marked ? `background-color: ${darkMode ? 'darkgreen' : 'lightgreen'};` : ''
                 }" title="${label}">
-                                <div style="display:flex; justify-content: center">
+                                <div style="display:flex; justify-content: center; align-items: center;">
                                         ${imgHTML}
                                 </div>
                                 <div style="text-align: center; font-weight: bold; font-size: ${textHeight}px; line-height: ${lineHeight}px; height: ${lineHeight}px; width: ${elemWidth}px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; ${
@@ -556,7 +573,7 @@ async function updateCollectElements(isSecondTry) {
             }
             let additionalCSS = useSingleLine ? 'overflow-x: auto; overflow-y: hidden;' : 'flex-wrap: wrap;';
             html = `<div class="collect-container${rotationClass}" dir="auto" style="height: 100%; flex: 1; display: flex; flex-direction: row; background-color: ${backgroundColor}; text-align: justify; ${additionalCSS}">
-                        <div class="collect-items-container" style="display: flex; flex-direction: row; ">${html}</div>
+                        <div class="collect-items-container" style="display: flex; flex-direction: row; align-items: center;">${html}</div>
                     </div>`;
             outerContainerJqueryElem.html(html);
             if (useSingleLine) {
@@ -602,7 +619,8 @@ function setLabel(element, newLabel) {
 }
 
 function getImageData(element) {
-    return element.image ? element.image.data || element.image.url : null;
+    if (!element || !element.image) return null;
+    return element.image.data || element.image.url || element.image.src || element.image.dataBase64 || null;
 }
 
 /**

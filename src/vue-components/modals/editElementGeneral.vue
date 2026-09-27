@@ -32,7 +32,7 @@
             <input type="checkbox" id="inputHidden" v-if="gridElement" v-model="gridElement.hidden"/>
             <label for="inputHidden">{{ $t('hideElement') }}</label>
         </div>
-        <div class="srow" v-if="metadata">
+        <div class="srow">
             <accordion :acc-label="$t('advancedOptions')">
                 <div class="row">
                     <label class="col-sm-2" for="vocabularyLevel">{{ $t('vocabularyLevel') }}</label>
@@ -52,28 +52,35 @@
                     <label for="toggleInBar">{{ $t('toggleInCollectionElementIfAddedMultipleTimes') }}</label>
                 </div>
                 <slider-input label="fontSize" unit="%" id="fontSize" :show-clear-button="true" min="0" max="70" step="1" v-model.number="gridElement.fontSizePct" @input="resetTestGrid"/>
-                <div class="srow">
-                    <label class="four columns" for="backgroundColor">
-                        <span v-if="metadata.colorConfig.colorMode === ColorConfig.COLOR_MODE_BORDER">{{ $t('customBorderColor') }}</span>
-                        <span v-if="metadata.colorConfig.colorMode !== ColorConfig.COLOR_MODE_BORDER">{{ $t('customBackgroundColor') }}</span>
-                    </label>
-                    <input class="five columns" type="color" id="backgroundColor" v-if="gridElement" v-model="gridElement.backgroundColor" @input="gridElement.colorCategory = undefined; resetTestGrid()"/>
-                    <button class="two columns" :disabled="!gridElement.backgroundColor" @click="gridElement.backgroundColor = null; resetTestGrid();">{{ $t('clear') }}</button>
-                </div>
-                <div class="srow mb-4" v-if="metadata.colorConfig.colorMode === ColorConfig.COLOR_MODE_BOTH">
-                    <label class="four columns" for="borderColor">{{ $t('customBorderColor') }}</label>
-                    <input class="five columns" type="color" id="borderColor" v-if="gridElement" v-model="gridElement.borderColor" @input="gridElement.colorCategory = undefined; resetTestGrid()"/>
-                    <button class="two columns" :disabled="!gridElement.borderColor" @click="gridElement.borderColor = null; resetTestGrid();">{{ $t('clear') }}</button>
-                </div>
-                <div class="srow mb-4">
-                    <label class="four columns" for="fontColor">
-                        <span>{{ $t('fontColor') }}</span>
-                    </label>
-                    <input id="fontColor" v-model="gridElement.fontColor" class="five columns" type="color" @input="resetTestGrid">
-                    <button class="two columns" :disabled="!gridElement.fontColor" @click="gridElement.fontColor = null; resetTestGrid();">{{ $t('clear') }}</button>
-                </div>
+                <color-palette-picker
+                    id="backgroundColor"
+                    :label="metadata && metadata.colorConfig && metadata.colorConfig.colorMode === ColorConfig.COLOR_MODE_BORDER ? 'customBorderColor' : 'customBackgroundColor'"
+                    v-if="gridElement"
+                    v-model="gridElement.backgroundColor"
+                    default-color="#ffffff"
+                    :allow-transparent="true"
+                    @input="gridElement.colorCategory = undefined; resetTestGrid()"
+                    @change="gridElement.colorCategory = undefined; resetTestGrid()" />
 
-                <app-grid-display class="testGrid" v-if="metadata" style="max-width: 200px; height: 200px;" :grid-data="testGridData" :metadata="metadata" :watch-for-changes="true"/>
+                <color-palette-picker
+                    id="borderColor"
+                    label="customBorderColor"
+                    v-if="gridElement && metadata && metadata.colorConfig && metadata.colorConfig.colorMode === ColorConfig.COLOR_MODE_BOTH"
+                    v-model="gridElement.borderColor"
+                    default-color="#808080"
+                    @input="gridElement.colorCategory = undefined; resetTestGrid()"
+                    @change="gridElement.colorCategory = undefined; resetTestGrid()" />
+
+                <color-palette-picker
+                    id="fontColor"
+                    label="fontColor"
+                    v-if="gridElement"
+                    v-model="gridElement.fontColor"
+                    default-color="#000000"
+                    @input="resetTestGrid"
+                    @change="resetTestGrid" />
+
+                <app-grid-display class="testGrid" v-if="metadata && testGridData" style="max-width: 200px; height: 200px;" :grid-data="testGridData" :metadata="metadata" :watch-for-changes="true"/>
             </accordion>
         </div>
         <div class="srow">
@@ -126,13 +133,14 @@
     import {speechService} from "../../js/service/speechService";
     import Accordion from '../components/accordion.vue';
     import SliderInput from './input/sliderInput.vue';
+    import ColorPalettePicker from './input/colorPalettePicker.vue';
     import AppGridDisplay from '../grid-display/appGridDisplay.vue';
     import { GridData } from '../../js/model/GridData';
     import { GridElement } from '../../js/model/GridElement';
     import { ColorConfig } from '../../js/model/ColorConfig';
 
     export default {
-        components: { AppGridDisplay, SliderInput, Accordion },
+        components: { AppGridDisplay, SliderInput, Accordion, ColorPalettePicker },
         props: ['gridElement', 'gridData'],
         data: function () {
             return {

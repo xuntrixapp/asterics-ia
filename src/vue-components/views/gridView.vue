@@ -21,8 +21,18 @@
                 <span class="groq-status-dot" :class="'groq-status-' + groqStatus"></span>
                 <i class="fas fa-history"></i>
             </button>
-            <button tabindex="32" @click="systemActionService.enterFullscreen()" class="spaced small" :aria-label="$t('fullscreen')"><i class="fas fa-expand"/> <span class="hide-mobile">{{ $t('fullscreen') }}</span></button>
+            <button tabindex="32" @click="systemActionService.toggleFullscreen()" class="spaced small" :aria-label="metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN')" :title="metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN')"><i :class="metadata && metadata.fullscreen ? 'fas fa-compress' : 'fas fa-expand'"/> <span class="hide-mobile">{{ metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN') }}</span></button>
         </header>
+
+        <!-- Botón flotante para salir de pantalla completa si la barra superior está oculta -->
+        <button v-if="metadata && metadata.fullscreen"
+                @click="systemActionService.exitFullscreen()"
+                class="floating-fullscreen-exit-btn"
+                :aria-label="$t('SYS_LEAVE_FULLSCREEN')"
+                :title="$t('SYS_LEAVE_FULLSCREEN')">
+            <i class="fas fa-compress"></i>
+        </button>
+
         <div class="srow content text-content" v-show="!renderGridData">
             <div class="grid-container grid-mask">
                 <i class="fas fa-4x fa-spinner fa-spin" style="position: relative;"/>
@@ -846,4 +856,32 @@
 </script>
 
 <style scoped>
+.floating-fullscreen-exit-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 99999;
+    background: rgba(30, 30, 30, 0.75);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    font-size: 18px;
+    opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+    padding: 0;
+    outline: none;
+}
+.floating-fullscreen-exit-btn:hover,
+.floating-fullscreen-exit-btn:active {
+    opacity: 1;
+    transform: scale(1.08);
+    background: rgba(0, 0, 0, 0.95);
+}
 </style>

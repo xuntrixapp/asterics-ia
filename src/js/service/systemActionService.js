@@ -55,37 +55,33 @@ let _lastActionType = null;
 
 systemActionService.enterFullscreen = async function(dontSave) {
     let now = Date.now();
-    if (_lastActionType === GridActionSystem.actions.SYS_LEAVE_FULLSCREEN && (now - _lastActionTimestamp < 500)) {
-        return;
-    }
     _lastActionType = GridActionSystem.actions.SYS_ENTER_FULLSCREEN;
     _lastActionTimestamp = now;
     util.openFullscreen();
     let metadata = await dataService.getMetadata();
-    metadata.fullscreen = true;
-    if (!dontSave) {
-        await dataService.saveMetadata(metadata);
+    if (metadata) {
+        metadata.fullscreen = true;
+        if (!dontSave) {
+            await dataService.saveMetadata(metadata);
+        }
     }
     $(document).trigger(constants.EVENT_METADATA_UPDATED);
     $(document).trigger(constants.EVENT_SIDEBAR_CLOSE);
-}
+    setTimeout(() => {
+        $(document).trigger(constants.EVENT_GRID_RESIZE);
+    }, 200);
+};
 
 systemActionService.exitFullscreen = async function() {
-    if (!dataService.getCurrentUser()) {
-        return;
-    }
-    let metadata = await dataService.getMetadata();
-    let wasFs = util.isFullscreen() || (metadata && metadata.fullscreen);
-    if (!wasFs) {
-        return;
-    }
     _lastActionType = GridActionSystem.actions.SYS_LEAVE_FULLSCREEN;
     _lastActionTimestamp = Date.now();
     util.closeFullscreen();
-    if (metadata.fullscreen) {
+    let metadata = await dataService.getMetadata();
+    if (metadata && metadata.fullscreen) {
         metadata.fullscreen = false;
         await dataService.saveMetadata(metadata);
     }
+    $(document).trigger(constants.EVENT_METADATA_UPDATED);
     setTimeout(() => {
         $(document).trigger(constants.EVENT_GRID_RESIZE);
     }, 200);
@@ -93,7 +89,8 @@ systemActionService.exitFullscreen = async function() {
 
 systemActionService.toggleFullscreen = async function() {
     let metadata = await dataService.getMetadata();
-    if (util.isFullscreen() || (metadata && metadata.fullscreen)) {
+    let isFs = util.isFullscreen() || (metadata && metadata.fullscreen);
+    if (isFs) {
         await systemActionService.exitFullscreen();
     } else {
         await systemActionService.enterFullscreen();

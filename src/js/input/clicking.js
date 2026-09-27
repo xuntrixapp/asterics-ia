@@ -21,10 +21,13 @@ function ClickerConstructor(itemSelector, options) {
 
     function onclick(event) {
         let now = new Date().getTime();
-        if (now - globalLastOnClick < 250) {
+        if (now - globalLastOnClick < 80) {
             return;
         }
         globalLastOnClick = now;
+        if (typeof window !== 'undefined' && window.AndroidNative && window.AndroidNative.reportUserInteraction) {
+            try { window.AndroidNative.reportUserInteraction(); } catch (e) {}
+        }
         if (_selectionListener) {
             _selectionListener(event.currentTarget);
         }

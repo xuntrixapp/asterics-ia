@@ -322,6 +322,7 @@
     "bottom": "Abajo",
     "browserNotSupportingOfflineMode": "Su navegador no soporta el modo offline. Si lo necesita, actualice o utilice un navegador diferente.",
     "bubbleBox": "Cuadro de texto / Narrador",
+    "bubbleColorsAndPalette": "Colores y Paleta del Bocadillo (50 Colores)",
     "bubbleFillColor": "Color de relleno del bocadillo",
     "bubbleLineColor": "Color del trazo del bocadillo",
     "bubbleLineWidth": "Grosor de línea del bocadillo",

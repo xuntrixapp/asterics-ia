@@ -1,11 +1,11 @@
 <template>
     <div class="color-palette-picker-container mb-3">
-        <div class="srow d-flex align-items-center flex-wrap">
-            <label class="four columns mb-1" :for="id">
+        <div class="row align-items-center mb-1">
+            <label class="col-sm-3 col-12 mb-1" :for="id">
                 <span>{{ label | translate }}</span>
             </label>
 
-            <div class="five columns d-flex align-items-center gap-2 mb-1">
+            <div class="col-sm-7 col-9 d-flex align-items-center gap-2 mb-1">
                 <!-- Botón de apertura de la tabla de 50 colores -->
                 <button type="button"
                         class="color-preview-btn d-flex align-items-center justify-content-between p-1 flex-grow-1"
@@ -14,6 +14,7 @@
                         :title="$t('selectColor') || 'Seleccionar color'">
                     <span class="color-swatch-box me-2" :style="swatchStyle"></span>
                     <span class="color-hex-label me-1">{{ displayColorText }}</span>
+                    <span class="palette-badge me-1">50 Colores 🎨</span>
                     <i :class="['fas', isOpen ? 'fa-chevron-up' : 'fa-chevron-down', 'ms-auto', 'text-muted']"></i>
                 </button>
 
@@ -34,39 +35,43 @@
             </div>
 
             <!-- Botón de limpiar / restablecer -->
-            <button v-if="showClearButton"
-                    type="button"
-                    class="two columns mb-1"
-                    :disabled="isDefaultValue"
-                    @click="resetToDefault">
-                {{ $t('clear') }}
-            </button>
+            <div class="col-sm-2 col-3 mb-1 px-1" v-if="showClearButton">
+                <button type="button"
+                        class="btn btn-secondary btn-sm col-12"
+                        :disabled="isDefaultValue"
+                        @click="resetToDefault">
+                    {{ $t('clear') }}
+                </button>
+            </div>
         </div>
 
         <!-- Panel desplegable con la tabla de 50 colores preestablecidos y opciones de edición -->
         <div v-if="isOpen" class="palette-dropdown-panel p-3 mt-2">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="palette-header-title">
-                    <i class="fas fa-th me-1"></i> {{ $t('presetColors') || '50 Colores Preestablecidos' }}
+                    <i class="fas fa-th me-1"></i> {{ $t('presetColors') || 'Tabla de 50 Colores Preestablecidos' }}
                 </span>
                 <button type="button" class="btn-close-palette" @click="isOpen = false" :title="$t('close')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
 
-            <!-- Tabla de 50 colores preestablecidos (5 filas x 10 columnas) -->
+            <!-- Tabla de 50 colores preestablecidos (5 filas x 10 columnas con categorías) -->
             <div class="colors-table-grid mb-3">
-                <div v-for="(row, rIdx) in preset50Colors" :key="'row-' + rIdx" class="colors-table-row">
-                    <button v-for="(col, cIdx) in row"
-                            :key="'c-' + rIdx + '-' + cIdx"
-                            type="button"
-                            class="color-grid-cell"
-                            :class="{ 'is-selected': isSelected(col) }"
-                            :style="{ backgroundColor: col }"
-                            :title="col"
-                            @click="selectColor(col)">
-                        <i v-if="isSelected(col)" :class="['fas', 'fa-check', isColorDark(col) ? 'text-white' : 'text-dark']"></i>
-                    </button>
+                <div v-for="(row, rIdx) in preset50Colors" :key="'row-' + rIdx" class="colors-table-row-wrapper mb-2">
+                    <div class="palette-row-category-name">{{ rowLabels[rIdx] }}</div>
+                    <div class="colors-table-row">
+                        <button v-for="(col, cIdx) in row"
+                                :key="'c-' + rIdx + '-' + cIdx"
+                                type="button"
+                                class="color-grid-cell"
+                                :class="{ 'is-selected': isSelected(col) }"
+                                :style="{ backgroundColor: col }"
+                                :title="col"
+                                @click="selectColor(col)">
+                            <i v-if="isSelected(col)" :class="['fas', 'fa-check', isColorDark(col) ? 'text-white' : 'text-dark']"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -85,7 +90,7 @@
             <!-- Barra de edición y personalización de color -->
             <div class="custom-color-edit-bar d-flex align-items-center justify-content-between p-2">
                 <div class="d-flex align-items-center gap-2">
-                    <label class="mb-0 fw-bold">{{ $t('customColor') || 'Color personalizado:' }}</label>
+                    <label class="mb-0 fw-bold">{{ $t('customColor') || 'Personalizado:' }}</label>
                     <input type="color"
                            class="color-picker-input-inline"
                            :value="safeHexForNative(value)"
@@ -97,7 +102,7 @@
                            @input="onHexTextInput"
                            placeholder="#000000" />
                 </div>
-                <button type="button" class="btn btn-sm btn-primary" @click="isOpen = false">
+                <button type="button" class="btn btn-sm btn-primary px-3" @click="isOpen = false">
                     <i class="fas fa-check me-1"></i> {{ $t('accept') || 'Aceptar' }}
                 </button>
             </div>
@@ -122,6 +127,14 @@ const PRESET_50_COLORS = [
     ['#ffeaa7', '#fab1a0', '#ff7675', '#fd79a8', '#fdcb6e', '#55efc4', '#81ecec', '#74b9ff', '#a29bfe', '#636e72']
 ];
 
+const ROW_LABELS = [
+    '1. Escala de grises y neutros',
+    '2. Primarios vivos (Estilo Cómic)',
+    '3. Tonos pastel y suaves',
+    '4. Tonos intensos y profundos',
+    '5. Paleta Pop-Art moderna'
+];
+
 export default {
     name: 'ColorPalettePicker',
     props: {
@@ -136,6 +149,7 @@ export default {
         return {
             isOpen: false,
             preset50Colors: PRESET_50_COLORS,
+            rowLabels: ROW_LABELS,
             i18nService: i18nService
         };
     },
@@ -244,6 +258,25 @@ export default {
 .color-hex-label {
     font-weight: 600;
     color: #333;
+}
+
+.palette-badge {
+    font-size: 0.78em;
+    font-weight: 600;
+    color: #2d7bb4;
+    background-color: #eaf2f8;
+    border: 1px solid #c0d8ec;
+    border-radius: 4px;
+    padding: 2px 6px;
+    display: inline-block;
+}
+
+.palette-row-category-name {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: #546e7a;
+    margin-bottom: 2px;
+    text-align: left;
 }
 
 .native-color-hidden {

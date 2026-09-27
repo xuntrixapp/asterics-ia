@@ -4,14 +4,12 @@ import { util } from '../util/util.js';
 import $ from '../externals/jquery.js';
 import { audioUtil } from '../util/audioUtil.js';
 import { speechServiceExternal } from './speechServiceExternal.js';
-import { kokoroService } from './kokoroService.js';
 import { localStorageService } from './data/localStorageService.js';
 import { i18nService } from './i18nService';
 import voiceUtil from '../util/voiceUtil';
 
 let speechService = {};
 
-let _ttsEngine = 'standard';
 let _preferredVoiceId = null;
 let _secondVoiceId = null;
 let _voicePitch = 1;
@@ -63,10 +61,11 @@ speechService.speak = async function (textOrOject, options = {}) {
     options = options || {};
     options.voiceLangIsTextLang = options.voiceLangIsTextLang || _voiceLangIsTextLang;
     let userSettings = localStorageService.getUserSettings();
+    let voiceConfig = (userSettings && userSettings.voiceConfig) || {};
     let text = null;
     let isString = typeof textOrOject === 'string';
     let isSpeaking = await speechService.isSpeaking();
-    if (userSettings.voiceConfig.waitForSpeechToFinish && (isSpeaking && !options.dontStop)) {
+    if (voiceConfig.waitForSpeechToFinish && (isSpeaking && !options.dontStop)) {
         return;
     }
     if (!textOrOject || (!isString && Object.keys(textOrOject).length === 0)) {
@@ -77,7 +76,7 @@ speechService.speak = async function (textOrOject, options = {}) {
     }
     speechService.resetSpeakAfterFinished();
 
-    let preferredVoiceId = options.preferredVoice || _preferredVoiceId;
+    let preferredVoiceId = options.preferredVoice || voiceConfig.preferredVoice || _preferredVoiceId;
     let prefVoiceLang = speechService.getVoiceLang(preferredVoiceId);
     let alternativeLang = options.voiceLangIsTextLang && prefVoiceLang ? prefVoiceLang : i18nService.getContentLang();
     let langToUse = options.lang || alternativeLang;
@@ -100,33 +99,6 @@ speechService.speak = async function (textOrOject, options = {}) {
     $(document).trigger(constants.EVENT_SPEAKING_TEXT, [text]);
     if (!options.dontStop) {
         speechService.stopSpeaking();
-    }
-
-    // Ruta exclusiva para Kokoro TTS
-    if (_ttsEngine === constants.TTS_ENGINE_KOKORO) {
-        hasSpoken = true;
-        let kokoroVoiceToUse = options.preferredVoice || userSettings.voiceConfig.kokoroVoice || undefined;
-        await kokoroService.speak(text, {
-            preferredVoice: kokoroVoiceToUse,
-            lang: langToUse,
-            rate: options.rate || (options.useStandardRatePitch ? 1 : _voiceRate),
-            pitch: options.useStandardRatePitch ? 1 : _voicePitch,
-            voiceLangIsTextLang: options.voiceLangIsTextLang,
-            dontStop: options.dontStop,
-            progressFn: options.progressFn
-        });
-        testIsSpeaking();
-        setTimeout(() => {
-            testIsSpeaking();
-        }, 300);
-        if (_secondVoiceId && options.speakSecondary) {
-            speechService.speakAfterFinished(textOrOject, {
-                preferredVoice: _secondVoiceId,
-                useStandardRatePitch: true,
-                voiceLangIsTextLang: true
-            });
-        }
-        return;
     }
 
     let voices = getVoicesById(preferredVoiceId) || getVoicesByLang(langToUse);
@@ -268,7 +240,6 @@ speechService.stopSpeaking = function () {
     isSpeakingNative = false;
     startedSpeakingRV = false;
     _speakArrayRunId = null;
-    kokoroService.stop();
     if (window.AndroidTTS && window.AndroidTTS.stop) {
         window.AndroidTTS.stop();
     }
@@ -280,9 +251,6 @@ speechService.stopSpeaking = function () {
 };
 
 speechService.isSpeaking = async function () {
-    if (kokoroService.isSpeaking()) {
-        return true;
-    }
     if (window.AndroidTTS && window.AndroidTTS.isSpeaking) {
         if (window.AndroidTTS.isSpeaking()) {
             return true;
@@ -335,6 +303,7 @@ speechService.testSpeak = function(voiceId, testSentence, testLang) {
     testSentence = testSentence || i18nService.tl('thisIsAnEnglishSentence', null, i18nService.getBaseLang(testLang));
     speechService.speak(testSentence, {
         preferredVoice: voiceId,
+        ttsEngine: constants.TTS_ENGINE_STANDARD,
         useStandardRatePitch: true
     });
 };
@@ -535,14 +504,15 @@ async function init() {
     for (let voice of externalVoices) {
         addVoice(voice.id, voice.name, voice.lang, voice.type, voice.local || false, voice);
     }
+    updateSettings();
     _initPromiseResolveFn();
 }
 init();
+updateSettings();
 
 function updateSettings() {
     let userSettings = localStorageService.getUserSettings();
-    let voiceConfig = userSettings.voiceConfig || {};
-    _ttsEngine = voiceConfig.ttsEngine || 'standard';
+    let voiceConfig = (userSettings && userSettings.voiceConfig) || {};
     _preferredVoiceId = voiceConfig.preferredVoice || null;
     _voicePitch = voiceConfig.voicePitch || 1;
     _voiceRate = voiceConfig.voiceRate || 1;
