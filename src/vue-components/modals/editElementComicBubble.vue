@@ -13,7 +13,7 @@
         <div class="row">
             <label class="col-sm-2" for="bubbleTypeSelect">{{ $t('bubbleType') }}</label>
             <div class="col-sm-10">
-                <select class="col-12" id="bubbleTypeSelect" v-model="bubbleProps.bubbleType" @change="resetTestGrid">
+                <select class="col-12" id="bubbleTypeSelect" v-model="bubbleProps.bubbleType" @change="onBubbleTypeChange">
                     <option value="speech">💬 {{ $t('bubbleSpeech') }}</option>
                     <option value="thought">💭 {{ $t('bubbleThought') }}</option>
                     <option value="shout">💥 {{ $t('bubbleShout') }}</option>
@@ -103,28 +103,92 @@
                 <slider-input label="fontSize" unit="%" id="fontSize" :show-clear-button="true" min="40" max="250" step="5" v-model.number="gridElement.fontSizePct" @input="onFontSizeChange"/>
                 <slider-input label="bubbleLineWidth" unit="px" id="lineWidth" :show-clear-button="true" min="1" max="12" step="1" v-model.number="bubbleProps.borderWidth" @input="resetTestGrid"/>
 
-                <div class="srow">
-                    <label class="four columns" for="bubbleLineColor">{{ $t('bubbleLineColor') }}</label>
-                    <input class="five columns" type="color" id="bubbleLineColor" v-model="bubbleProps.borderColor" @input="resetTestGrid"/>
-                    <button class="two columns" @click="bubbleProps.borderColor = '#111111'; resetTestGrid()">{{ $t('clear') }}</button>
+                <!-- 1. Color del trazo del bocadillo -->
+                <color-palette-picker
+                    id="bubbleLineColor"
+                    label="bubbleLineColor"
+                    v-model="bubbleProps.borderColor"
+                    default-color="#111111"
+                    @input="resetTestGrid"
+                    @change="resetTestGrid" />
+
+                <!-- 2. Color de relleno del bocadillo -->
+                <color-palette-picker
+                    id="bubbleFillColor"
+                    label="bubbleFillColor"
+                    v-model="bubbleProps.fillColor"
+                    default-color="#ffffff"
+                    @input="resetTestGrid"
+                    @change="resetTestGrid" />
+
+                <!-- 3. Color del texto -->
+                <color-palette-picker
+                    id="fontColor"
+                    label="fontColor"
+                    v-model="bubbleProps.fontColor"
+                    default-color="#111111"
+                    @input="onFontColorChange"
+                    @change="onFontColorChange" />
+
+                <!-- 4. Color de fondo de celda -->
+                <color-palette-picker
+                    id="cellBgColor"
+                    label="cellBackgroundColor"
+                    v-model="bubbleProps.cellBgColor"
+                    default-color="transparent"
+                    :allow-transparent="true"
+                    @input="onCellBgColorChange"
+                    @change="onCellBgColorChange" />
+
+                <!-- Botón de guardar colores seleccionados y aplicar a todos -->
+                <div class="srow my-3">
+                    <div class="offset-sm-4 col-sm-8 px-0 d-flex flex-column gap-2">
+                        <!-- 1. Guardar colores como predeterminados -->
+                        <button type="button"
+                                class="btn-save-bubble-colors col-12 d-flex align-items-center justify-content-center gap-2 py-2"
+                                @click="saveBubbleColors">
+                            <i :class="['fas', saveSuccess ? 'fa-check' : 'fa-save']"></i>
+                            <span>{{ saveSuccess ? ($t('colorsSavedSuccess') || '¡Colores guardados correctamente!') : ($t('saveBubbleColors') || 'Guardar colores para este bocadillo') }}</span>
+                        </button>
+
+                        <!-- 2. Aplicar colores a todos los bocadillos del tablero actual -->
+                        <button type="button"
+                                class="btn-apply-all-colors col-12 d-flex align-items-center justify-content-center gap-2 py-2"
+                                @click="openApplyAllConfirm">
+                            <i :class="['fas', applyAllSuccess ? 'fa-check' : 'fa-layer-group']"></i>
+                            <span>{{ applyAllSuccess ? ($t('colorsAppliedToAllSuccess') || '¡Colores aplicados a todos los bocadillos!') : ($t('applyColorsToAllInBoard') || 'Aplicar colores a todos los bocadillos del tablero') }}</span>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="srow">
-                    <label class="four columns" for="bubbleFillColor">{{ $t('bubbleFillColor') }}</label>
-                    <input class="five columns" type="color" id="bubbleFillColor" v-model="bubbleProps.fillColor" @input="resetTestGrid"/>
-                    <button class="two columns" @click="bubbleProps.fillColor = '#ffffff'; resetTestGrid()">{{ $t('clear') }}</button>
-                </div>
+                <!-- Diálogo de confirmación personalizado (Sin texto de localhost) -->
+                <div v-if="showConfirmApplyAll" class="custom-confirm-backdrop">
+                    <div class="custom-confirm-card p-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="confirm-icon-bubble">
+                                <i class="fas fa-palette"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 text-dark fw-bold">{{ $t('applyColorsToAllTitle') || 'Aplicar colores a todos los bocadillos' }}</h4>
+                                <div class="text-muted small">{{ $t('applyColorsToAllSubtitle') || 'Actualización de estilos en el tablero' }}</div>
+                            </div>
+                        </div>
 
-                <div class="srow">
-                    <label class="four columns" for="fontColor">{{ $t('fontColor') }}</label>
-                    <input class="five columns" type="color" id="fontColor" v-model="bubbleProps.fontColor" @input="gridElement.fontColor = bubbleProps.fontColor; resetTestGrid()"/>
-                    <button class="two columns" @click="bubbleProps.fontColor = '#111111'; gridElement.fontColor = '#111111'; resetTestGrid()">{{ $t('clear') }}</button>
-                </div>
+                        <div class="confirm-body-text mb-4">
+                            {{ $t('applyColorsToAllConfirmMsg') || 'Se actualizarán los colores (trazo, relleno, texto y fondo de celda) de todos los bocadillos de cómic de este tablero con los colores seleccionados actualmente.' }}
+                            <br><br>
+                            <strong>{{ $t('doYouWishToContinue') || '¿Deseas continuar y aplicar los cambios?' }}</strong>
+                        </div>
 
-                <div class="srow">
-                    <label class="four columns" for="cellBgColor">{{ $t('cellBackgroundColor') }}</label>
-                    <input class="five columns" type="color" id="cellBgColor" v-model="bubbleProps.cellBgColor" @input="gridElement.backgroundColor = bubbleProps.cellBgColor; resetTestGrid()"/>
-                    <button class="two columns" @click="bubbleProps.cellBgColor = 'transparent'; gridElement.backgroundColor = null; resetTestGrid()">{{ $t('clear') }}</button>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary px-3" @click="showConfirmApplyAll = false">
+                                <i class="fas fa-times me-1"></i> {{ $t('cancel') || 'Cancelar' }}
+                            </button>
+                            <button type="button" class="btn btn-primary px-3" @click="confirmAndApplyToAll">
+                                <i class="fas fa-check me-1"></i> {{ $t('applyToAll') || 'Aplicar a todos' }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="srow mt-3">
@@ -179,16 +243,18 @@
 import { i18nService } from '../../js/service/i18nService';
 import { speechService } from '../../js/service/speechService';
 import { dataService } from '../../js/service/data/dataService';
+import { localStorageService } from '../../js/service/data/localStorageService';
 import { GridData } from '../../js/model/GridData';
 import { GridElement } from '../../js/model/GridElement';
 import Accordion from '../components/accordion.vue';
 import SliderInput from './input/sliderInput.vue';
+import ColorPalettePicker from './input/colorPalettePicker.vue';
 import AppGridDisplay from '../grid-display/appGridDisplay.vue';
 import { gridUtil } from '../../js/util/gridUtil';
 
 export default {
     name: 'EditElementComicBubble',
-    components: { Accordion, SliderInput, AppGridDisplay },
+    components: { Accordion, SliderInput, ColorPalettePicker, AppGridDisplay },
     props: ['gridElement', 'gridData'],
     data() {
         return {
@@ -198,7 +264,10 @@ export default {
             selectAllLanguages: false,
             allLanguages: i18nService.getAllLanguages(),
             gridLanguages: [],
-            testGridData: null
+            testGridData: null,
+            saveSuccess: false,
+            showConfirmApplyAll: false,
+            applyAllSuccess: false
         };
     },
     computed: {
@@ -207,20 +276,21 @@ export default {
                 this.$set(this.gridElement, 'additionalProps', {});
             }
             if (!this.gridElement.additionalProps.comicBubble) {
-                this.$set(this.gridElement.additionalProps, 'comicBubble', {
+                let saved = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS') || {};
+                this.$set(this.gridElement, 'additionalProps', 'comicBubble', {
                     bubbleType: 'speech',
                     tailPosition: 'bottom-left',
                     text: '',
                     fontFamily: '"Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive, sans-serif',
                     fontSizePct: 100,
-                    fontColor: '#111111',
+                    fontColor: saved.fontColor || '#111111',
                     fontWeight: 'bold',
                     fontStyle: 'normal',
                     textAlign: 'center',
-                    borderColor: '#111111',
+                    borderColor: saved.borderColor || '#111111',
                     borderWidth: 3,
-                    fillColor: '#ffffff',
-                    cellBgColor: 'transparent',
+                    fillColor: saved.fillColor || '#ffffff',
+                    cellBgColor: saved.cellBgColor || 'transparent',
                     comicShadow: true
                 });
             }
@@ -249,6 +319,88 @@ export default {
         onFontSizeChange() {
             this.bubbleProps.fontSizePct = this.gridElement.fontSizePct;
             this.resetTestGrid();
+        },
+        onFontColorChange(color) {
+            this.bubbleProps.fontColor = color;
+            this.gridElement.fontColor = color;
+            this.resetTestGrid();
+        },
+        onCellBgColorChange(color) {
+            this.bubbleProps.cellBgColor = color;
+            this.gridElement.backgroundColor = (color === 'transparent' ? null : color);
+            this.resetTestGrid();
+        },
+        onBubbleTypeChange() {
+            let savedForType = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS_' + this.bubbleProps.bubbleType)
+                || localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS');
+            if (savedForType) {
+                if (savedForType.borderColor) this.bubbleProps.borderColor = savedForType.borderColor;
+                if (savedForType.fillColor) this.bubbleProps.fillColor = savedForType.fillColor;
+                if (savedForType.fontColor) {
+                    this.bubbleProps.fontColor = savedForType.fontColor;
+                    this.gridElement.fontColor = savedForType.fontColor;
+                }
+                if (savedForType.cellBgColor) {
+                    this.bubbleProps.cellBgColor = savedForType.cellBgColor;
+                    this.gridElement.backgroundColor = (savedForType.cellBgColor === 'transparent' ? null : savedForType.cellBgColor);
+                }
+            }
+            this.resetTestGrid();
+        },
+        saveBubbleColors() {
+            let colorsToSave = {
+                borderColor: this.bubbleProps.borderColor || '#111111',
+                fillColor: this.bubbleProps.fillColor || '#ffffff',
+                fontColor: this.bubbleProps.fontColor || '#111111',
+                cellBgColor: this.bubbleProps.cellBgColor || 'transparent'
+            };
+            localStorageService.saveJSON('AG_COMIC_BUBBLE_SAVED_COLORS', colorsToSave);
+            if (this.bubbleProps.bubbleType) {
+                localStorageService.saveJSON('AG_COMIC_BUBBLE_SAVED_COLORS_' + this.bubbleProps.bubbleType, colorsToSave);
+            }
+            this.saveSuccess = true;
+            setTimeout(() => {
+                this.saveSuccess = false;
+            }, 3000);
+        },
+        openApplyAllConfirm() {
+            this.showConfirmApplyAll = true;
+        },
+        async confirmAndApplyToAll() {
+            this.showConfirmApplyAll = false;
+            let colors = {
+                borderColor: this.bubbleProps.borderColor || '#111111',
+                fillColor: this.bubbleProps.fillColor || '#ffffff',
+                fontColor: this.bubbleProps.fontColor || '#111111',
+                cellBgColor: this.bubbleProps.cellBgColor || 'transparent'
+            };
+
+            // Guardar también como predeterminados
+            localStorageService.saveJSON('AG_COMIC_BUBBLE_SAVED_COLORS', colors);
+            if (this.bubbleProps.bubbleType) {
+                localStorageService.saveJSON('AG_COMIC_BUBBLE_SAVED_COLORS_' + this.bubbleProps.bubbleType, colors);
+            }
+
+            if (this.gridData && this.gridData.gridElements && this.gridData.gridElements.length > 0) {
+                for (let el of this.gridData.gridElements) {
+                    if (el.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
+                        if (!el.additionalProps) this.$set(el, 'additionalProps', {});
+                        if (!el.additionalProps.comicBubble) this.$set(el.additionalProps, 'comicBubble', {});
+                        this.$set(el.additionalProps.comicBubble, 'borderColor', colors.borderColor);
+                        this.$set(el.additionalProps.comicBubble, 'fillColor', colors.fillColor);
+                        this.$set(el.additionalProps.comicBubble, 'fontColor', colors.fontColor);
+                        this.$set(el.additionalProps.comicBubble, 'cellBgColor', colors.cellBgColor);
+                        this.$set(el, 'fontColor', colors.fontColor);
+                        this.$set(el, 'backgroundColor', colors.cellBgColor === 'transparent' ? null : colors.cellBgColor);
+                    }
+                }
+                await dataService.saveGrid(this.gridData);
+            }
+
+            this.applyAllSuccess = true;
+            setTimeout(() => {
+                this.applyAllSuccess = false;
+            }, 3500);
         },
         toggleBold(e) {
             this.bubbleProps.fontWeight = e.target.checked ? 'bold' : 'normal';
@@ -384,5 +536,99 @@ export default {
 
 .gap-4 {
     gap: 1.5rem;
+}
+
+.btn-save-bubble-colors {
+    background-color: #2d7bb4;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-save-bubble-colors:hover {
+    background-color: #236595;
+    color: #ffffff;
+}
+
+.btn-save-bubble-colors:active {
+    transform: scale(0.98);
+}
+
+.btn-apply-all-colors {
+    background-color: #455a64;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-apply-all-colors:hover {
+    background-color: #37474f;
+    color: #ffffff;
+}
+
+.btn-apply-all-colors:active {
+    transform: scale(0.98);
+}
+
+.custom-confirm-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.65);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+.custom-confirm-card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    max-width: 480px;
+    width: 90%;
+    border: 1px solid #d0dce5;
+    animation: modalScaleIn 0.2s ease-out;
+}
+
+@keyframes modalScaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.confirm-icon-bubble {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3em;
+    flex-shrink: 0;
+}
+
+.confirm-body-text {
+    font-size: 0.95em;
+    line-height: 1.5;
+    color: #455a64;
 }
 </style>

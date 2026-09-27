@@ -70,6 +70,7 @@
     import EditElementWordForms from "./editElementWordForms.vue";
     import EditElementLive from './editElementLive.vue';
     import EditElementMatrix from './editElementMatrix.vue';
+    import { localStorageService } from '../../js/service/data/localStorageService';
     import { gridLayoutUtil } from '../grid-layout/utils/gridLayoutUtil';
 
     const TAB_GENERAL = 'TAB_GENERAL';
@@ -213,22 +214,29 @@
                 if (newType === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
                     if (!this.gridElement.additionalProps) this.$set(this.gridElement, 'additionalProps', {});
                     if (!this.gridElement.additionalProps.comicBubble) {
+                        let saved = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS') || {};
                         this.$set(this.gridElement.additionalProps, 'comicBubble', {
                             bubbleType: 'speech',
                             tailPosition: 'bottom-left',
                             text: '',
                             fontFamily: '"Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive, sans-serif',
                             fontSizePct: 100,
-                            fontColor: '#111111',
+                            fontColor: saved.fontColor || '#111111',
                             fontWeight: 'bold',
                             fontStyle: 'normal',
                             textAlign: 'center',
-                            borderColor: '#111111',
+                            borderColor: saved.borderColor || '#111111',
                             borderWidth: 3,
-                            fillColor: '#ffffff',
-                            cellBgColor: 'transparent',
+                            fillColor: saved.fillColor || '#ffffff',
+                            cellBgColor: saved.cellBgColor || 'transparent',
                             comicShadow: true
                         });
+                        if (saved.fontColor) {
+                            this.gridElement.fontColor = saved.fontColor;
+                        }
+                        if (saved.cellBgColor && saved.cellBgColor !== 'transparent') {
+                            this.gridElement.backgroundColor = saved.cellBgColor;
+                        }
                     }
                 }
                 this.updateTabs();

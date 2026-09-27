@@ -88,6 +88,7 @@
     import {GridImage} from "../../js/model/GridImage";
     import {GridActionPredict} from "../../js/model/GridActionPredict";
     import {GridActionSpeak} from "../../js/model/GridActionSpeak";
+    import {localStorageService} from "../../js/service/data/localStorageService";
 
     let vueApp = null;
 
@@ -363,22 +364,29 @@
                         showEdit = true;
                     } else if (type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
                         let currentLang = i18nService.getContentLang() || 'es';
+                        let savedColors = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS') || {};
                         newElement.type = GridElement.ELEMENT_TYPE_COMIC_BUBBLE;
                         newElement.label = {};
                         newElement.label[currentLang] = i18nService.t('comicBubbleDefaultText');
                         newElement.actions = [new GridActionSpeak()];
+                        if (savedColors.fontColor) {
+                            newElement.fontColor = savedColors.fontColor;
+                        }
+                        if (savedColors.cellBgColor && savedColors.cellBgColor !== 'transparent') {
+                            newElement.backgroundColor = savedColors.cellBgColor;
+                        }
                         newElement.additionalProps = newElement.additionalProps || {};
                         newElement.additionalProps.comicBubble = {
                             bubbleType: 'speech',
                             tailPosition: 'bottom-left',
-                            fillColor: '#ffffff',
-                            borderColor: '#111111',
+                            fillColor: savedColors.fillColor || '#ffffff',
+                            borderColor: savedColors.borderColor || '#111111',
                             borderWidth: 3,
-                            cellBgColor: 'transparent',
+                            cellBgColor: savedColors.cellBgColor || 'transparent',
                             fontFamily: '"Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive, sans-serif',
                             fontWeight: 'bold',
                             fontStyle: 'normal',
-                            fontColor: '#111111',
+                            fontColor: savedColors.fontColor || '#111111',
                             textAlign: 'center',
                             comicShadow: true
                         };

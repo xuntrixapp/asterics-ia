@@ -1,6 +1,8 @@
 <template>
     <div ref="wrapper" class="grid-item-content comic-bubble-wrapper" :style="wrapperStyle">
-        <svg class="comic-bubble-svg" viewBox="0 0 300 200" preserveAspectRatio="none">
+        <svg class="comic-bubble-svg"
+             viewBox="0 0 300 200"
+             preserveAspectRatio="none">
             <!-- Sombra sólida 3D tipo cómic -->
             <path v-if="comicShadow && shadowPath" :d="shadowPath" :fill="'#111111'" opacity="0.85" transform="translate(5, 5)"/>
 
@@ -21,7 +23,7 @@
                   stroke-linecap="round" />
         </svg>
 
-        <!-- Contenedor del texto centrado dentro de la burbuja -->
+        <!-- Contenedor del texto centrado dentro del relleno del bocadillo (HTML estándar, sin deformación de fuentes) -->
         <div ref="textContainer" class="comic-bubble-text-container" :style="textContainerStyle">
             <div ref="bubbleText" class="comic-bubble-text" :style="textStyle">
                 {{ displayContent }}
@@ -30,6 +32,7 @@
     </div>
 </template>
 
+<script>
 import { i18nService } from '../../../js/service/i18nService';
 import { stateService } from '../../../js/service/stateService';
 import { constants } from '../../../js/util/constants';
@@ -64,10 +67,13 @@ export default {
         },
         fontSizePct() {
             let el = this.targetElement;
-            if (el && el.fontSizePct != null) {
+            if (el && el.fontSizePct != null && el.fontSizePct > 0) {
                 return el.fontSizePct;
             }
-            return (this.bubbleProps && this.bubbleProps.fontSizePct) || 100;
+            if (this.bubbleProps && this.bubbleProps.fontSizePct != null && this.bubbleProps.fontSizePct > 0) {
+                return this.bubbleProps.fontSizePct;
+            }
+            return 100;
         },
         fontColor() {
             let el = this.targetElement;
@@ -115,6 +121,19 @@ export default {
                 if (text && typeof text === 'string' && text.trim()) {
                     return text;
                 }
+                let curLang = i18nService.getContentLang();
+                if (label[curLang] && typeof label[curLang] === 'string' && label[curLang].trim()) {
+                    return label[curLang];
+                }
+                let appLang = i18nService.getAppLang();
+                if (label[appLang] && typeof label[appLang] === 'string' && label[appLang].trim()) {
+                    return label[appLang];
+                }
+                for (let key in label) {
+                    if (label[key] && typeof label[key] === 'string' && label[key].trim()) {
+                        return label[key];
+                    }
+                }
             }
             return (this.bubbleProps && this.bubbleProps.text) || '';
         },
@@ -125,76 +144,67 @@ export default {
                 height: '100%',
                 flex: '1 1 auto',
                 position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                display: 'block',
                 overflow: 'hidden',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                boxSizing: 'border-box'
             };
         },
-        paddingPercentages() {
-            let padTop = 10;
-            let padBottom = 10;
-            let padLeft = 10;
-            let padRight = 10;
-
-            if (this.tailPosition === 'bottom-left' || this.tailPosition === 'bottom-center' || this.tailPosition === 'bottom-right') {
-                padBottom = 24;
-                padTop = 10;
-                padLeft = 12;
-                padRight = 12;
-            } else if (this.tailPosition === 'top-left' || this.tailPosition === 'top-right') {
-                padTop = 24;
-                padBottom = 10;
-                padLeft = 12;
-                padRight = 12;
-            } else if (this.tailPosition === 'left') {
-                padLeft = 24;
-                padRight = 12;
-                padTop = 10;
-                padBottom = 10;
-            } else if (this.tailPosition === 'right') {
-                padRight = 24;
-                padLeft = 12;
-                padTop = 10;
-                padBottom = 10;
+        textPercentages() {
+            if (this.bubbleType === 'box') {
+                return { top: 6.0, left: 6.0, width: 88.0, height: 86.0 };
             }
 
             if (this.bubbleType === 'shout') {
-                padTop = 22;
-                padBottom = 22;
-                padLeft = 22;
-                padRight = 22;
-            } else if (this.bubbleType === 'thought') {
-                padTop = 16;
-                padBottom = 26;
-                padLeft = 16;
-                padRight = 16;
-            } else if (this.bubbleType === 'box') {
-                padTop = 10;
-                padBottom = 10;
-                padLeft = 10;
-                padRight = 10;
+                return { top: 15.0, left: 15.0, width: 70.0, height: 70.0 };
             }
 
-            return { padTop, padBottom, padLeft, padRight };
+            if (this.bubbleType === 'thought') {
+                if (this.tailPosition === 'top-left' || this.tailPosition === 'top-right') {
+                    return { top: 34.0, left: 10.0, width: 80.0, height: 56.0 };
+                } else if (this.tailPosition === 'left') {
+                    return { top: 8.0, left: 16.0, width: 74.0, height: 76.0 };
+                } else if (this.tailPosition === 'right') {
+                    return { top: 8.0, left: 10.0, width: 74.0, height: 76.0 };
+                } else if (this.tailPosition === 'none') {
+                    return { top: 8.0, left: 10.0, width: 80.0, height: 76.0 };
+                }
+                // default thought tail is bottom
+                return { top: 6.0, left: 10.0, width: 80.0, height: 56.0 };
+            }
+
+            // speech / whisper
+            if (this.tailPosition === 'bottom-left' || this.tailPosition === 'bottom-center' || this.tailPosition === 'bottom-right') {
+                // Main bubble body is y: [14, 155] (7% to 77.5%), center is placed in upper cavity at ~34%
+                return { top: 4.0, left: 6.0, width: 88.0, height: 60.0 };
+            } else if (this.tailPosition === 'top-left' || this.tailPosition === 'top-right') {
+                // Main bubble body is y: [45, 186] (22.5% to 93.0%), center is placed in lower cavity at ~66%
+                return { top: 36.0, left: 6.0, width: 88.0, height: 60.0 };
+            } else if (this.tailPosition === 'left') {
+                return { top: 6.0, left: 18.0, width: 76.0, height: 86.0 };
+            } else if (this.tailPosition === 'right') {
+                return { top: 6.0, left: 6.0, width: 76.0, height: 86.0 };
+            } else {
+                return { top: 6.0, left: 6.0, width: 88.0, height: 86.0 };
+            }
         },
         textContainerStyle() {
-            let { padTop, padBottom, padLeft, padRight } = this.paddingPercentages;
+            let dim = this.textPercentages;
             return {
                 position: 'absolute',
-                top: padTop + '%',
-                bottom: padBottom + '%',
-                left: padLeft + '%',
-                right: padRight + '%',
+                top: dim.top + '%',
+                left: dim.left + '%',
+                width: dim.width + '%',
+                height: dim.height + '%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                textAlign: 'center',
                 pointerEvents: 'none',
                 zIndex: 2,
                 overflow: 'hidden',
                 boxSizing: 'border-box',
-                padding: '2px 4px'
+                padding: '2px 6px'
             };
         },
         textStyle() {
@@ -208,15 +218,17 @@ export default {
                 color: this.fontColor,
                 fontWeight: this.fontWeight,
                 fontStyle: this.fontStyle,
-                lineHeight: 1.18,
+                lineHeight: 1.15,
                 textAlign: this.textAlign || 'center',
                 width: '100%',
                 maxHeight: '100%',
                 wordBreak: 'break-word',
-                overflowWrap: 'anywhere',
+                overflowWrap: 'break-word',
                 hyphens: 'auto',
                 whiteSpace: 'pre-line',
-                display: 'block'
+                display: 'block',
+                margin: '0',
+                padding: '0'
             };
         },
         thoughtBubbles() {
@@ -414,39 +426,44 @@ export default {
                     return;
                 }
 
+                let container = this.$refs.textContainer;
+                let wrapper = this.$refs.wrapper;
+
+                let dim = this.textPercentages;
+                let widthFactor = dim.width / 100;
+                let heightFactor = dim.height / 100;
+
                 let width = 0;
                 let height = 0;
 
-                let wrapper = this.$refs.wrapper;
-                let container = this.$refs.textContainer;
-
-                let { padTop, padBottom, padLeft, padRight } = this.paddingPercentages;
-                let padH = (padLeft + padRight) / 100;
-                let padV = (padTop + padBottom) / 100;
-
-                if (wrapper && wrapper.clientWidth && wrapper.clientHeight) {
-                    width = wrapper.clientWidth * (1 - padH);
-                    height = wrapper.clientHeight * (1 - padV);
-                } else if (container && container.clientWidth && container.clientHeight) {
+                if (container && container.clientWidth > 0 && container.clientHeight > 0) {
                     width = container.clientWidth;
                     height = container.clientHeight;
-                } else if (this.containerSize && this.containerSize.width && this.containerSize.height) {
-                    width = this.containerSize.width * (1 - padH);
-                    height = this.containerSize.height * (1 - padV);
+                } else if (wrapper && wrapper.clientWidth > 0 && wrapper.clientHeight > 0) {
+                    width = wrapper.clientWidth * widthFactor;
+                    height = wrapper.clientHeight * heightFactor;
+                } else if (this.containerSize && this.containerSize.width > 0 && this.containerSize.height > 0) {
+                    width = this.containerSize.width * widthFactor;
+                    height = this.containerSize.height * heightFactor;
                 }
 
-                if (width <= 5 || height <= 5) {
+                if (width <= 10 || height <= 10) {
                     return;
                 }
 
-                let availWidth = Math.max(8, width - 8);
-                let availHeight = Math.max(8, height - 6);
+                let availWidth = Math.max(10, width - 6);
+                let availHeight = Math.max(10, height - 4);
+
+                let cleanFont = (this.fontFamily || 'sans-serif')
+                    .replace(/["']/g, '')
+                    .split(',')[0]
+                    .trim() || 'sans-serif';
 
                 let canvas = document.createElement('canvas');
                 let ctx = canvas.getContext('2d');
 
-                let minSize = 6;
-                let maxSize = Math.max(minSize, Math.min(Math.floor(availHeight * 0.95), Math.floor(availWidth * 0.95), 140));
+                let minSize = 8;
+                let maxSize = Math.max(minSize, Math.min(Math.floor(availHeight * 0.92), Math.floor(availWidth * 0.92), 120));
 
                 let low = minSize;
                 let high = maxSize;
@@ -454,7 +471,7 @@ export default {
 
                 while (low <= high) {
                     let mid = Math.floor((low + high) / 2);
-                    ctx.font = `${this.fontStyle} ${this.fontWeight} ${mid}px ${this.fontFamily}`;
+                    ctx.font = `${this.fontStyle || 'normal'} ${this.fontWeight || 'bold'} ${mid}px ${cleanFont}, sans-serif`;
 
                     let rawLines = text.split(/\r?\n/);
                     let totalLines = 0;
@@ -469,14 +486,16 @@ export default {
                         let curLine = '';
                         for (let w of words) {
                             let testLine = curLine ? (curLine + ' ' + w) : w;
-                            if (ctx.measureText(testLine).width <= availWidth) {
+                            let testWidth = ctx.measureText(testLine).width;
+                            if (testWidth <= availWidth) {
                                 curLine = testLine;
                             } else {
                                 if (curLine) {
                                     totalLines++;
                                     curLine = '';
                                 }
-                                if (ctx.measureText(w).width > availWidth) {
+                                let wordWidth = ctx.measureText(w).width;
+                                if (wordWidth > availWidth) {
                                     let subWord = '';
                                     for (let ch of w) {
                                         let testSub = subWord + ch;
@@ -498,8 +517,10 @@ export default {
                         }
                     }
 
-                    let lineHeight = mid * 1.18;
-                    if (totalLines * lineHeight <= availHeight) {
+                    let lineHeight = mid * 1.15;
+                    let totalHeight = totalLines * lineHeight;
+
+                    if (totalHeight <= availHeight) {
                         bestFitting = mid;
                         low = mid + 1;
                     } else {
@@ -507,10 +528,27 @@ export default {
                     }
                 }
 
-                let finalSize = Math.max(6, Math.round(bestFitting * (this.fontSizePct / 100)));
-                if (this.autoFontSizePx !== finalSize) {
-                    this.autoFontSizePx = finalSize;
+                let userScale = (this.fontSizePct || 100) / 100;
+                let calculatedPx = Math.max(8, Math.round(bestFitting * userScale));
+
+                if (this.autoFontSizePx !== calculatedPx) {
+                    this.autoFontSizePx = calculatedPx;
                 }
+
+                this.$nextTick(() => {
+                    let bText = this.$refs.bubbleText;
+                    let tCont = this.$refs.textContainer;
+                    if (bText && tCont && tCont.clientHeight > 0 && tCont.clientWidth > 0) {
+                        let currentPx = this.autoFontSizePx || calculatedPx;
+                        while (currentPx > 8 && (bText.scrollHeight > tCont.clientHeight || bText.scrollWidth > tCont.clientWidth)) {
+                            currentPx -= 1;
+                            bText.style.fontSize = currentPx + 'px';
+                        }
+                        if (this.autoFontSizePx !== currentPx) {
+                            this.autoFontSizePx = currentPx;
+                        }
+                    }
+                });
             });
         },
         externalUpdateFn(event, id, text) {
