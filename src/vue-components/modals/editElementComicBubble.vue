@@ -62,14 +62,13 @@
             </div>
         </div>
 
-        <!-- 5. SECCIÓN DE COLORES CON TABLAS DE 50 COLORES (DIRECTO Y SIEMPRE VISIBLE) -->
+        <!-- 5. SECCIÓN DE COLORES (DIRECTO Y SIEMPRE VISIBLE) -->
         <div class="color-section-container p-3 mb-4 rounded border bg-light">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
                     <i class="fas fa-palette text-primary"></i>
-                    <span>{{ $t('bubbleColorsAndPalette') || 'Personalización de Colores del Bocadillo (50 Colores)' }}</span>
+                    <span>{{ $t('bubbleColorsAndPalette') || 'Colores del bocadillo' }}</span>
                 </h5>
-                <span class="badge bg-primary text-white">50 Colores 🎨</span>
             </div>
 
             <!-- 1. Color del trazo del bocadillo -->

@@ -6,7 +6,7 @@
             </label>
 
             <div class="col-sm-7 col-9 d-flex align-items-center gap-2 mb-1">
-                <!-- Botón de apertura de la tabla de 50 colores -->
+                <!-- Botón de apertura de la tabla de colores -->
                 <button type="button"
                         class="color-preview-btn d-flex align-items-center justify-content-between p-1 flex-grow-1"
                         :id="id"
@@ -14,7 +14,6 @@
                         :title="$t('selectColor') || 'Seleccionar color'">
                     <span class="color-swatch-box me-2" :style="swatchStyle"></span>
                     <span class="color-hex-label me-1">{{ displayColorText }}</span>
-                    <span class="palette-badge me-1">50 Colores 🎨</span>
                     <i :class="['fas', isOpen ? 'fa-chevron-up' : 'fa-chevron-down', 'ms-auto', 'text-muted']"></i>
                 </button>
 
@@ -45,11 +44,11 @@
             </div>
         </div>
 
-        <!-- Panel desplegable con la tabla de 50 colores preestablecidos y opciones de edición -->
+        <!-- Panel desplegable con la tabla de colores preestablecidos y opciones de edición -->
         <div v-if="isOpen" class="palette-dropdown-panel p-3 mt-2">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="palette-header-title">
-                    <i class="fas fa-th me-1"></i> {{ $t('presetColors') || 'Tabla de 50 Colores Preestablecidos' }}
+                    <i class="fas fa-th me-1"></i> {{ $t('presetColors') || 'Colores preestablecidos' }}
                 </span>
                 <button type="button" class="btn-close-palette" @click="isOpen = false" :title="$t('close')">
                     <i class="fas fa-times"></i>
