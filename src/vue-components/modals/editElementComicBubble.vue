@@ -164,12 +164,12 @@
                                     class="btn-apply-all-colors w-100 d-flex align-items-center justify-content-center gap-2 py-2"
                                     @click="openApplyAllConfirm">
                                 <i :class="['fas', applyAllSuccess ? 'fa-check' : 'fa-layer-group']"></i>
-                                <span>{{ applyAllSuccess ? ($t('colorsAppliedToAllSuccess') || '¡Colores aplicados a todos!') : ($t('applyColorsToAllInBoard') || 'Aplicar colores a todos los bocadillos') }}</span>
+                                <span>{{ applyAllSuccess ? ($t('colorsAppliedToAllSuccess') || '¡Colores aplicados!') : ($t('applyColorsToAllInBoard') || 'Aplicar colores a bocadillos de este tipo') }}</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Diálogo de confirmación personalizado para aplicar a todos -->
+                    <!-- Diálogo de confirmación personalizado para aplicar a todos de este tipo -->
                     <div v-if="showConfirmApplyAll" class="custom-confirm-backdrop">
                         <div class="custom-confirm-card p-4">
                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -177,13 +177,13 @@
                                     <i class="fas fa-palette"></i>
                                 </div>
                                 <div>
-                                    <h4 class="mb-1 text-dark fw-bold">{{ $t('applyColorsToAllTitle') || 'Aplicar colores a todos los bocadillos' }}</h4>
-                                    <div class="text-muted small">{{ $t('applyColorsToAllSubtitle') || 'Actualización de estilos en el tablero' }}</div>
+                                    <h4 class="mb-1 text-dark fw-bold">{{ $t('applyColorsToAllTitle') || 'Aplicar colores a bocadillos de este tipo' }}</h4>
+                                    <div class="text-muted small">{{ getCurrentBubbleTypeName() }}</div>
                                 </div>
                             </div>
 
                             <div class="confirm-body-text mb-4">
-                                {{ $t('applyColorsToAllConfirmMsg') || 'Se actualizarán los colores (trazo, relleno, texto y fondo de celda) de todos los bocadillos de cómic de este tablero con los colores seleccionados actualmente.' }}
+                                Se actualizarán los colores (trazo, relleno, texto y fondo de celda) de todos los bocadillos de tipo <strong>"{{ getCurrentBubbleTypeName() }}"</strong> de este tablero con los colores seleccionados actualmente.
                                 <br><br>
                                 <strong>{{ $t('doYouWishToContinue') || '¿Deseas continuar y aplicar los cambios?' }}</strong>
                             </div>
@@ -193,7 +193,7 @@
                                     <i class="fas fa-times me-1"></i> {{ $t('cancel') || 'Cancelar' }}
                                 </button>
                                 <button type="button" class="btn btn-primary px-3" @click="confirmAndApplyToAll">
-                                    <i class="fas fa-check me-1"></i> {{ $t('applyToAll') || 'Aplicar a todos' }}
+                                    <i class="fas fa-check me-1"></i> {{ $t('applyToAll') || 'Aplicar a este tipo' }}
                                 </button>
                             </div>
                         </div>
@@ -374,11 +374,24 @@ export default {
                 this.saveSuccess = false;
             }, 3000);
         },
+        getCurrentBubbleTypeName() {
+            let type = this.bubbleProps.bubbleType || 'speech';
+            switch (type) {
+                case 'thought': return this.$t('bubbleThought') || 'Pensamiento';
+                case 'shout': return this.$t('bubbleShout') || 'Grito';
+                case 'whisper': return this.$t('bubbleWhisper') || 'Susurro';
+                case 'box': return this.$t('bubbleBox') || 'Cuadro de texto';
+                case 'speech':
+                default:
+                    return this.$t('bubbleSpeech') || 'Diálogo';
+            }
+        },
         openApplyAllConfirm() {
             this.showConfirmApplyAll = true;
         },
         async confirmAndApplyToAll() {
             this.showConfirmApplyAll = false;
+            let currentType = this.bubbleProps.bubbleType || 'speech';
             let colors = {
                 borderColor: this.bubbleProps.borderColor || '#111111',
                 fillColor: this.bubbleProps.fillColor || '#ffffff',
@@ -386,23 +399,24 @@ export default {
                 cellBgColor: this.bubbleProps.cellBgColor || 'transparent'
             };
 
-            // Guardar también como predeterminados
+            // Guardar también como predeterminados para este tipo
             localStorageService.saveJSON('AG_COMIC_BUBBLE_SAVED_COLORS', colors);
-            if (this.bubbleProps.bubbleType) {
-                localStorageService.saveJSON('AG_COMIC_BUBBLE_SAVED_COLORS_' + this.bubbleProps.bubbleType, colors);
-            }
+            localStorageService.saveJSON('AG_COMIC_BUBBLE_SAVED_COLORS_' + currentType, colors);
 
             if (this.gridData && this.gridData.gridElements && this.gridData.gridElements.length > 0) {
                 for (let el of this.gridData.gridElements) {
                     if (el.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
-                        if (!el.additionalProps) this.$set(el, 'additionalProps', {});
-                        if (!el.additionalProps.comicBubble) this.$set(el.additionalProps, 'comicBubble', {});
-                        this.$set(el.additionalProps.comicBubble, 'borderColor', colors.borderColor);
-                        this.$set(el.additionalProps.comicBubble, 'fillColor', colors.fillColor);
-                        this.$set(el.additionalProps.comicBubble, 'fontColor', colors.fontColor);
-                        this.$set(el.additionalProps.comicBubble, 'cellBgColor', colors.cellBgColor);
-                        this.$set(el, 'fontColor', colors.fontColor);
-                        this.$set(el, 'backgroundColor', colors.cellBgColor === 'transparent' ? null : colors.cellBgColor);
+                        let elType = (el.additionalProps && el.additionalProps.comicBubble && el.additionalProps.comicBubble.bubbleType) || 'speech';
+                        if (elType === currentType) {
+                            if (!el.additionalProps) this.$set(el, 'additionalProps', {});
+                            if (!el.additionalProps.comicBubble) this.$set(el.additionalProps, 'comicBubble', {});
+                            this.$set(el.additionalProps.comicBubble, 'borderColor', colors.borderColor);
+                            this.$set(el.additionalProps.comicBubble, 'fillColor', colors.fillColor);
+                            this.$set(el.additionalProps.comicBubble, 'fontColor', colors.fontColor);
+                            this.$set(el.additionalProps.comicBubble, 'cellBgColor', colors.cellBgColor);
+                            this.$set(el, 'fontColor', colors.fontColor);
+                            this.$set(el, 'backgroundColor', colors.cellBgColor === 'transparent' ? null : colors.cellBgColor);
+                        }
                     }
                 }
                 await dataService.saveGrid(this.gridData);
