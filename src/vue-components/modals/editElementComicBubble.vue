@@ -62,138 +62,54 @@
             </div>
         </div>
 
-        <!-- 5. ESTUDIO Y TABLA DE 50 COLORES DEL BOCADILLO (SIEMPRE VISIBLE Y DIRECTO) -->
-        <div class="color-studio-container p-3 mb-4 rounded border bg-light">
+        <!-- 5. SECCIÓN DE COLORES CON TABLAS DE 50 COLORES (DIRECTO Y SIEMPRE VISIBLE) -->
+        <div class="color-section-container p-3 mb-4 rounded border bg-light">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
                     <i class="fas fa-palette text-primary"></i>
-                    <span>{{ $t('bubbleColorsAndPalette') || 'Colores y Paleta del Bocadillo (50 Colores)' }}</span>
+                    <span>{{ $t('bubbleColorsAndPalette') || 'Personalización de Colores del Bocadillo (50 Colores)' }}</span>
                 </h5>
                 <span class="badge bg-primary text-white">50 Colores 🎨</span>
             </div>
 
-            <!-- Pestañas de selección de los 4 colores del bocadillo -->
-            <div class="row g-2 mb-3">
-                <!-- Pestaña 1: Trazo / Borde -->
-                <div class="col-6 col-md-3">
-                    <button type="button"
-                            class="bubble-color-tab-btn w-100 p-2 d-flex flex-column align-items-center rounded border"
-                            :class="{ 'active': activeColorTab === 'border' }"
-                            @click="activeColorTab = 'border'">
-                        <span class="small fw-bold mb-1">✏️ {{ $t('bubbleLineColor') || 'Trazo / Borde' }}</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="mini-swatch" :style="{ backgroundColor: bubbleProps.borderColor || '#111111' }"></span>
-                            <span class="mini-hex">{{ (bubbleProps.borderColor || '#111111').toUpperCase() }}</span>
-                        </div>
-                    </button>
-                </div>
+            <!-- 1. Color del trazo del bocadillo -->
+            <color-palette-picker
+                id="bubbleLineColor"
+                label="bubbleLineColor"
+                v-model="bubbleProps.borderColor"
+                default-color="#111111"
+                @input="resetTestGrid"
+                @change="resetTestGrid" />
 
-                <!-- Pestaña 2: Relleno Bocadillo -->
-                <div class="col-6 col-md-3">
-                    <button type="button"
-                            class="bubble-color-tab-btn w-100 p-2 d-flex flex-column align-items-center rounded border"
-                            :class="{ 'active': activeColorTab === 'fill' }"
-                            @click="activeColorTab = 'fill'">
-                        <span class="small fw-bold mb-1">🎨 {{ $t('bubbleFillColor') || 'Relleno Bocadillo' }}</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="mini-swatch" :style="{ backgroundColor: bubbleProps.fillColor || '#ffffff' }"></span>
-                            <span class="mini-hex">{{ (bubbleProps.fillColor || '#ffffff').toUpperCase() }}</span>
-                        </div>
-                    </button>
-                </div>
+            <!-- 2. Color de relleno del bocadillo -->
+            <color-palette-picker
+                id="bubbleFillColor"
+                label="bubbleFillColor"
+                v-model="bubbleProps.fillColor"
+                default-color="#ffffff"
+                @input="resetTestGrid"
+                @change="resetTestGrid" />
 
-                <!-- Pestaña 3: Color Texto -->
-                <div class="col-6 col-md-3">
-                    <button type="button"
-                            class="bubble-color-tab-btn w-100 p-2 d-flex flex-column align-items-center rounded border"
-                            :class="{ 'active': activeColorTab === 'font' }"
-                            @click="activeColorTab = 'font'">
-                        <span class="small fw-bold mb-1">🔤 {{ $t('fontColor') || 'Color Texto' }}</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="mini-swatch" :style="{ backgroundColor: bubbleProps.fontColor || '#111111' }"></span>
-                            <span class="mini-hex">{{ (bubbleProps.fontColor || '#111111').toUpperCase() }}</span>
-                        </div>
-                    </button>
-                </div>
+            <!-- 3. Color del texto -->
+            <color-palette-picker
+                id="fontColor"
+                label="fontColor"
+                v-model="bubbleProps.fontColor"
+                default-color="#111111"
+                @input="onFontColorChange"
+                @change="onFontColorChange" />
 
-                <!-- Pestaña 4: Fondo de Celda -->
-                <div class="col-6 col-md-3">
-                    <button type="button"
-                            class="bubble-color-tab-btn w-100 p-2 d-flex flex-column align-items-center rounded border"
-                            :class="{ 'active': activeColorTab === 'cellBg' }"
-                            @click="activeColorTab = 'cellBg'">
-                        <span class="small fw-bold mb-1">🔲 {{ $t('cellBackgroundColor') || 'Fondo Celda' }}</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="mini-swatch" :style="bubbleProps.cellBgColor === 'transparent' ? { background: 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 6px 6px' } : { backgroundColor: bubbleProps.cellBgColor || '#ffffff' }"></span>
-                            <span class="mini-hex">{{ bubbleProps.cellBgColor === 'transparent' ? ($t('transparent') || 'Transp.') : (bubbleProps.cellBgColor || '#FFFFFF').toUpperCase() }}</span>
-                        </div>
-                    </button>
-                </div>
-            </div>
+            <!-- 4. Color de fondo de celda -->
+            <color-palette-picker
+                id="cellBgColor"
+                label="cellBackgroundColor"
+                v-model="bubbleProps.cellBgColor"
+                default-color="transparent"
+                :allow-transparent="true"
+                @input="onCellBgColorChange"
+                @change="onCellBgColorChange" />
 
-            <!-- Panel Activo con la Tabla de 50 Colores Preestablecidos -->
-            <div class="active-palette-studio bg-white p-3 rounded border shadow-sm">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-bold text-dark">
-                        <i class="fas fa-th me-1 text-primary"></i>
-                        <span>{{ activeTabTitle }}</span>
-                    </div>
-                    <span class="text-muted small">Haz clic en un color para aplicarlo inmediatamente</span>
-                </div>
-
-                <!-- Tabla de 50 colores en 5 filas con categorías -->
-                <div class="colors-table-grid mb-3">
-                    <div v-for="(row, rIdx) in preset50Colors" :key="'studio-row-' + rIdx" class="colors-table-row-wrapper mb-2">
-                        <div class="palette-row-category-name">{{ rowLabels[rIdx] }}</div>
-                        <div class="colors-table-row">
-                            <button v-for="(col, cIdx) in row"
-                                    :key="'c-' + rIdx + '-' + cIdx"
-                                    type="button"
-                                    class="color-grid-cell"
-                                    :class="{ 'is-selected': isCurrentColorSelected(col) }"
-                                    :style="{ backgroundColor: col }"
-                                    :title="col"
-                                    @click="selectStudioColor(col)">
-                                <i v-if="isCurrentColorSelected(col)" :class="['fas', 'fa-check', isColorDark(col) ? 'text-white' : 'text-dark']"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Opción de fondo transparente si la pestaña es Fondo de Celda -->
-                <div v-if="activeColorTab === 'cellBg'" class="mb-3">
-                    <button type="button"
-                            class="btn-transparent-option d-flex align-items-center gap-2 p-2 w-100 rounded border"
-                            :class="{ 'is-selected': bubbleProps.cellBgColor === 'transparent' }"
-                            @click="selectStudioColor('transparent')">
-                        <span class="checkerboard-box"></span>
-                        <span class="fw-bold">{{ $t('transparent') || 'Transparente (Sin color de fondo)' }}</span>
-                        <i v-if="bubbleProps.cellBgColor === 'transparent'" class="fas fa-check ms-auto text-primary"></i>
-                    </button>
-                </div>
-
-                <!-- Barra inferior: Color Personalizado (Hex + Selector Nativo) -->
-                <div class="custom-color-edit-bar d-flex align-items-center justify-content-between p-2 rounded border bg-light flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="mb-0 fw-bold small text-secondary">{{ $t('customColor') || 'Color personalizado:' }}</label>
-                        <input type="color"
-                               class="color-picker-input-inline"
-                               :value="safeHexForCurrent"
-                               @input="onStudioColorInput" />
-                        <input type="text"
-                               class="hex-text-input form-control form-control-sm"
-                               maxlength="7"
-                               :value="currentSelectedHex"
-                               @input="onStudioHexTextInput"
-                               placeholder="#000000" />
-                    </div>
-                    <div class="text-muted small">
-                        Color activo: <strong>{{ currentSelectedHex }}</strong>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Botones de Acción: Guardar y Aplicar a Todos -->
+            <!-- Botones de guardar colores y aplicar a todos los bocadillos -->
             <div class="row mt-3 g-2">
                 <div class="col-12 col-md-6">
                     <button type="button"
@@ -213,7 +129,7 @@
                 </div>
             </div>
 
-            <!-- Diálogo de confirmación para aplicar a todos -->
+            <!-- Diálogo de confirmación personalizado para aplicar a todos -->
             <div v-if="showConfirmApplyAll" class="custom-confirm-backdrop">
                 <div class="custom-confirm-card p-4">
                     <div class="d-flex align-items-center gap-3 mb-3">
@@ -354,28 +270,6 @@ import SliderInput from './input/sliderInput.vue';
 import ColorPalettePicker from './input/colorPalettePicker.vue';
 import AppGridDisplay from '../grid-display/appGridDisplay.vue';
 import { gridUtil } from '../../js/util/gridUtil';
-import { fontUtil } from '../../js/util/fontUtil';
-
-const PRESET_50_COLORS = [
-    // Fila 1: Escala de grises y neutros (10 colores)
-    ['#000000', '#1f1f1f', '#3f3f3f', '#5f5f5f', '#7f7f7f', '#9f9f9f', '#bfbfbf', '#dfdfdf', '#f0f0f0', '#ffffff'],
-    // Fila 2: Primarios y vivos estilo cómic (10 colores)
-    ['#e53935', '#f4511e', '#fb8c00', '#ffb300', '#fdd835', '#7cb342', '#43a047', '#00acc1', '#1e88e5', '#8e24aa'],
-    // Fila 3: Tonos pastel y claros (10 colores)
-    ['#ffcdd2', '#ffe0b2', '#fff9c4', '#f0f4c3', '#c8e6c9', '#b2ebf2', '#bbdefb', '#d1c4e9', '#f8bbd0', '#e1bee7'],
-    // Fila 4: Tonos intensos y profundos (10 colores)
-    ['#b71c1c', '#e65100', '#f57f17', '#33691e', '#1b5e20', '#006064', '#0d47a1', '#311b92', '#880e4f', '#4e342e'],
-    // Fila 5: Paleta cómic moderna / Pop Art (10 colores)
-    ['#ffeaa7', '#fab1a0', '#ff7675', '#fd79a8', '#fdcb6e', '#55efc4', '#81ecec', '#74b9ff', '#a29bfe', '#636e72']
-];
-
-const ROW_LABELS = [
-    '1. Escala de grises y neutros',
-    '2. Primarios vivos (Estilo Cómic)',
-    '3. Tonos pastel y suaves',
-    '4. Tonos intensos y profundos',
-    '5. Paleta Pop-Art moderna'
-];
 
 export default {
     name: 'EditElementComicBubble',
@@ -392,10 +286,7 @@ export default {
             testGridData: null,
             saveSuccess: false,
             showConfirmApplyAll: false,
-            applyAllSuccess: false,
-            activeColorTab: 'border', // 'border' | 'fill' | 'font' | 'cellBg'
-            preset50Colors: PRESET_50_COLORS,
-            rowLabels: ROW_LABELS
+            applyAllSuccess: false
         };
     },
     computed: {
@@ -405,7 +296,7 @@ export default {
             }
             if (!this.gridElement.additionalProps.comicBubble) {
                 let saved = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS') || {};
-                this.$set(this.gridElement.additionalProps, 'comicBubble', {
+                this.$set(this.gridElement, 'additionalProps', 'comicBubble', {
                     bubbleType: 'speech',
                     tailPosition: 'bottom-left',
                     text: '',
@@ -429,59 +320,6 @@ export default {
                 return this.allLanguages;
             }
             return this.allLanguages.filter(l => this.gridLanguages.includes(l.code));
-        },
-        activeTabTitle() {
-            switch (this.activeColorTab) {
-                case 'border':
-                    return '✏️ ' + (i18nService.t('bubbleLineColor') || 'Color del Trazo / Borde');
-                case 'fill':
-                    return '🎨 ' + (i18nService.t('bubbleFillColor') || 'Color de Relleno del Bocadillo');
-                case 'font':
-                    return '🔤 ' + (i18nService.t('fontColor') || 'Color del Texto');
-                case 'cellBg':
-                    return '🔲 ' + (i18nService.t('cellBackgroundColor') || 'Color de Fondo de Celda');
-                default:
-                    return 'Paleta de colores';
-            }
-        },
-        currentSelectedHex() {
-            let val = '';
-            switch (this.activeColorTab) {
-                case 'border':
-                    val = this.bubbleProps.borderColor || '#111111';
-                    break;
-                case 'fill':
-                    val = this.bubbleProps.fillColor || '#ffffff';
-                    break;
-                case 'font':
-                    val = this.bubbleProps.fontColor || '#111111';
-                    break;
-                case 'cellBg':
-                    val = this.bubbleProps.cellBgColor || 'transparent';
-                    break;
-            }
-            return val === 'transparent' ? (i18nService.t('transparent') || 'Transparente') : (val || '').toUpperCase();
-        },
-        safeHexForCurrent() {
-            let val = '';
-            switch (this.activeColorTab) {
-                case 'border':
-                    val = this.bubbleProps.borderColor;
-                    break;
-                case 'fill':
-                    val = this.bubbleProps.fillColor;
-                    break;
-                case 'font':
-                    val = this.bubbleProps.fontColor;
-                    break;
-                case 'cellBg':
-                    val = this.bubbleProps.cellBgColor;
-                    break;
-            }
-            if (!val || val === 'transparent' || !val.startsWith('#') || val.length !== 7) {
-                return '#ffffff';
-            }
-            return val;
         }
     },
     watch: {
@@ -501,59 +339,15 @@ export default {
             this.bubbleProps.fontSizePct = this.gridElement.fontSizePct;
             this.resetTestGrid();
         },
-        selectStudioColor(color) {
-            switch (this.activeColorTab) {
-                case 'border':
-                    this.bubbleProps.borderColor = color;
-                    break;
-                case 'fill':
-                    this.bubbleProps.fillColor = color;
-                    break;
-                case 'font':
-                    this.bubbleProps.fontColor = color;
-                    this.gridElement.fontColor = color;
-                    break;
-                case 'cellBg':
-                    this.bubbleProps.cellBgColor = color;
-                    this.gridElement.backgroundColor = (color === 'transparent' ? null : color);
-                    break;
-            }
+        onFontColorChange(color) {
+            this.bubbleProps.fontColor = color;
+            this.gridElement.fontColor = color;
             this.resetTestGrid();
         },
-        onStudioColorInput(e) {
-            let color = e.target.value;
-            this.selectStudioColor(color);
-        },
-        onStudioHexTextInput(e) {
-            let color = e.target.value;
-            if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
-                this.selectStudioColor(color);
-            }
-        },
-        isCurrentColorSelected(color) {
-            let current = '';
-            switch (this.activeColorTab) {
-                case 'border':
-                    current = this.bubbleProps.borderColor || '#111111';
-                    break;
-                case 'fill':
-                    current = this.bubbleProps.fillColor || '#ffffff';
-                    break;
-                case 'font':
-                    current = this.bubbleProps.fontColor || '#111111';
-                    break;
-                case 'cellBg':
-                    current = this.bubbleProps.cellBgColor || 'transparent';
-                    break;
-            }
-            return current.toLowerCase() === color.toLowerCase();
-        },
-        isColorDark(hex) {
-            try {
-                return fontUtil.isHexDark(hex);
-            } catch (e) {
-                return false;
-            }
+        onCellBgColorChange(color) {
+            this.bubbleProps.cellBgColor = color;
+            this.gridElement.backgroundColor = (color === 'transparent' ? null : color);
+            this.resetTestGrid();
         },
         onBubbleTypeChange() {
             let savedForType = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS_' + this.bubbleProps.bubbleType)
@@ -763,146 +557,9 @@ export default {
     color: #266697;
 }
 
-.color-studio-container {
+.color-section-container {
     background-color: #f8fafc;
     border-color: #cbd5e1 !important;
-}
-
-.bubble-color-tab-btn {
-    background-color: #ffffff;
-    border-color: #cbd5e1;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: center;
-}
-
-.bubble-color-tab-btn:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-
-.bubble-color-tab-btn.active {
-    background-color: #e0f2fe;
-    border-color: #0284c7 !important;
-    box-shadow: 0 0 0 2px #0284c7;
-}
-
-.mini-swatch {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border-radius: 3px;
-    border: 1px solid rgba(0,0,0,0.25);
-    box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
-}
-
-.mini-hex {
-    font-size: 0.8em;
-    font-family: monospace;
-    font-weight: bold;
-    color: #334155;
-}
-
-.active-palette-studio {
-    border-color: #cbd5e1 !important;
-}
-
-.palette-row-category-name {
-    font-size: 0.82em;
-    font-weight: 600;
-    color: #475569;
-    margin-bottom: 2px;
-    text-align: left;
-}
-
-.colors-table-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    background-color: #f8fafc;
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
-}
-
-.colors-table-row {
-    display: flex;
-    gap: 4px;
-    justify-content: space-between;
-}
-
-.color-grid-cell {
-    flex: 1 1 0;
-    height: 28px;
-    min-width: 20px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8em;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    padding: 0;
-}
-
-.color-grid-cell:hover {
-    transform: scale(1.18);
-    z-index: 3;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    border-color: #333;
-}
-
-.color-grid-cell.is-selected {
-    box-shadow: 0 0 0 2px #0284c7, inset 0 0 2px rgba(0,0,0,0.5);
-    border-color: #fff;
-    transform: scale(1.08);
-}
-
-.btn-transparent-option {
-    background-color: #f8fafc;
-    border-color: #cbd5e1;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.2s;
-}
-
-.btn-transparent-option:hover {
-    background-color: #f1f5f9;
-}
-
-.btn-transparent-option.is-selected {
-    border-color: #0284c7 !important;
-    background-color: #e0f2fe;
-}
-
-.checkerboard-box {
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
-    display: inline-block;
-    background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 8px 8px;
-    border: 1px solid #adb5bd;
-}
-
-.custom-color-edit-bar {
-    border-color: #cbd5e1 !important;
-}
-
-.color-picker-input-inline {
-    width: 34px;
-    height: 30px;
-    padding: 0;
-    border: 1px solid #cbd5e1;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-.hex-text-input {
-    width: 90px;
-    height: 30px;
-    font-size: 0.9em;
-    font-family: monospace;
 }
 
 .btn-save-bubble-colors {
