@@ -744,9 +744,9 @@ $(window).on(constants.ELEMENT_EVENT_ID, function (event, element) {
         }
     }
 
-    if (element.type === GridElement.ELEMENT_TYPE_NORMAL) {
+    if (element.type === GridElement.ELEMENT_TYPE_NORMAL || (element.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE && element.addToCollect)) {
         element.wordFormTags = stateService.getCurrentWordFormTags();
-        let label = getLabel(element);
+        let label = getLabel(element) || (element.additionalProps && element.additionalProps.comicBubble && element.additionalProps.comicBubble.text);
         let printText = getPrintTextOfElement(element);
         let image = getImageData(element);
         if (label && collectElementService.isCurrentGridKeyboard()) {

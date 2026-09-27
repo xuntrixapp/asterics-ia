@@ -234,8 +234,9 @@
                         if (saved.fontColor) {
                             this.gridElement.fontColor = saved.fontColor;
                         }
-                        if (saved.cellBgColor && saved.cellBgColor !== 'transparent') {
-                            this.gridElement.backgroundColor = saved.cellBgColor;
+                        if (this.gridElement.addToCollect == null && this.gridElement.dontCollect == null) {
+                            this.$set(this.gridElement, 'dontCollect', true);
+                            this.$set(this.gridElement, 'addToCollect', false);
                         }
                     }
                 }

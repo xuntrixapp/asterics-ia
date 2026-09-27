@@ -540,6 +540,7 @@
     "doYouWishToContinue": "¿Deseas continuar y aplicar los cambios?",
     "donateAtOpencollective": "Donar en open collective",
     "donateWithPaypal": "Donar con PayPal",
+    "addElementToCollectElement": "Añadir esta celda a la frase acumulada",
     "dontAddElementToCollectElement": "No añadir esta celda a la frase acumulada",
     "dontConvertLabels": "No transformar el texto",
     "downloadBackup": "Descargar tablero/s",

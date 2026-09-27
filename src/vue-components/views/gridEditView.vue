@@ -374,6 +374,8 @@
                         let currentLang = i18nService.getContentLang() || 'es';
                         let savedColors = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS') || {};
                         newElement.type = GridElement.ELEMENT_TYPE_COMIC_BUBBLE;
+                        newElement.dontCollect = true;
+                        newElement.addToCollect = false;
                         newElement.label = {};
                         newElement.label[currentLang] = i18nService.t('comicBubbleDefaultText');
                         newElement.actions = [new GridActionSpeak()];

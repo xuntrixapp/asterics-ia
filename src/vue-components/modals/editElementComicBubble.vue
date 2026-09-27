@@ -201,8 +201,8 @@
                 </div>
 
                 <div class="srow mt-3">
-                    <input type="checkbox" id="inputDontCollect" v-if="gridElement" v-model="gridElement.dontCollect"/>
-                    <label for="inputDontCollect" class="ms-1">{{ $t('dontAddElementToCollectElement') }}</label>
+                    <input type="checkbox" id="inputAddToCollect" v-if="gridElement" v-model="gridElement.addToCollect" @change="onAddToCollectChange"/>
+                    <label for="inputAddToCollect" class="ms-1">{{ $t('addElementToCollectElement') || 'Añadir esta celda a la frase acumulada' }}</label>
                 </div>
 
                 <!-- Vista previa en tiempo real -->
@@ -456,6 +456,11 @@ export default {
                 minColumnCount: 1
             });
         },
+        onAddToCollectChange() {
+            if (this.gridElement) {
+                this.gridElement.dontCollect = !this.gridElement.addToCollect;
+            }
+        },
         findUsedLocales() {
             this.gridLanguages = gridUtil.getUsedLocales(this.gridData);
             this.selectAllLanguages = this.gridLanguages.length <= 1;
@@ -465,6 +470,12 @@ export default {
     },
     created() {
         if (!this.gridElement) return;
+        if (this.gridElement.addToCollect == null) {
+            this.$set(this.gridElement, 'addToCollect', this.gridElement.dontCollect === false);
+            if (this.gridElement.dontCollect == null) {
+                this.$set(this.gridElement, 'dontCollect', true);
+            }
+        }
         if (!this.gridElement.label || typeof this.gridElement.label !== 'object') {
             this.$set(this.gridElement, 'label', {});
         }
@@ -475,26 +486,33 @@ export default {
             this.$set(this.gridElement, 'additionalProps', {});
         }
         if (!this.gridElement.additionalProps.comicBubble) {
-            this.$set(this.gridElement, 'additionalProps', 'comicBubble', {
+            let saved = localStorageService.getJSON('AG_COMIC_BUBBLE_SAVED_COLORS') || {};
+            this.$set(this.gridElement.additionalProps, 'comicBubble', {
                 bubbleType: 'speech',
                 tailPosition: 'bottom-left',
                 text: '',
                 fontFamily: '"Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive, sans-serif',
                 fontSizePct: 100,
-                fontColor: '#111111',
+                fontColor: saved.fontColor || '#111111',
                 fontWeight: 'bold',
                 fontStyle: 'normal',
                 textAlign: 'center',
-                borderColor: '#111111',
+                borderColor: saved.borderColor || '#111111',
                 borderWidth: 3,
-                fillColor: '#ffffff',
-                cellBgColor: 'transparent',
+                fillColor: saved.fillColor || '#ffffff',
+                cellBgColor: saved.cellBgColor || 'transparent',
                 comicShadow: true
             });
         }
     },
     mounted() {
         if (!this.gridElement) return;
+        if (this.gridElement.addToCollect == null) {
+            this.$set(this.gridElement, 'addToCollect', this.gridElement.dontCollect === false);
+            if (this.gridElement.dontCollect == null) {
+                this.$set(this.gridElement, 'dontCollect', true);
+            }
+        }
         if (!this.gridElement.label || typeof this.gridElement.label !== 'object') {
             this.$set(this.gridElement, 'label', {});
         }
