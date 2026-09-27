@@ -62,104 +62,7 @@
             </div>
         </div>
 
-        <!-- 5. SECCIÓN DE COLORES (DIRECTO Y SIEMPRE VISIBLE) -->
-        <div class="color-section-container p-3 mb-4 rounded border bg-light">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="fas fa-palette text-primary"></i>
-                    <span>{{ $t('bubbleColorsAndPalette') || 'Colores del bocadillo' }}</span>
-                </h5>
-            </div>
-
-            <!-- 1. Color del trazo del bocadillo -->
-            <color-palette-picker
-                id="bubbleLineColor"
-                label="bubbleLineColor"
-                v-model="bubbleProps.borderColor"
-                default-color="#111111"
-                @input="resetTestGrid"
-                @change="resetTestGrid" />
-
-            <!-- 2. Color de relleno del bocadillo -->
-            <color-palette-picker
-                id="bubbleFillColor"
-                label="bubbleFillColor"
-                v-model="bubbleProps.fillColor"
-                default-color="#ffffff"
-                @input="resetTestGrid"
-                @change="resetTestGrid" />
-
-            <!-- 3. Color del texto -->
-            <color-palette-picker
-                id="fontColor"
-                label="fontColor"
-                v-model="bubbleProps.fontColor"
-                default-color="#111111"
-                @input="onFontColorChange"
-                @change="onFontColorChange" />
-
-            <!-- 4. Color de fondo de celda -->
-            <color-palette-picker
-                id="cellBgColor"
-                label="cellBackgroundColor"
-                v-model="bubbleProps.cellBgColor"
-                default-color="transparent"
-                :allow-transparent="true"
-                @input="onCellBgColorChange"
-                @change="onCellBgColorChange" />
-
-            <!-- Botones de guardar colores y aplicar a todos los bocadillos -->
-            <div class="row mt-3 g-2">
-                <div class="col-12 col-md-6">
-                    <button type="button"
-                            class="btn-save-bubble-colors w-100 d-flex align-items-center justify-content-center gap-2 py-2"
-                            @click="saveBubbleColors">
-                        <i :class="['fas', saveSuccess ? 'fa-check' : 'fa-save']"></i>
-                        <span>{{ saveSuccess ? ($t('colorsSavedSuccess') || '¡Colores guardados!') : ($t('saveBubbleColors') || 'Guardar colores para este bocadillo') }}</span>
-                    </button>
-                </div>
-                <div class="col-12 col-md-6">
-                    <button type="button"
-                            class="btn-apply-all-colors w-100 d-flex align-items-center justify-content-center gap-2 py-2"
-                            @click="openApplyAllConfirm">
-                        <i :class="['fas', applyAllSuccess ? 'fa-check' : 'fa-layer-group']"></i>
-                        <span>{{ applyAllSuccess ? ($t('colorsAppliedToAllSuccess') || '¡Colores aplicados a todos!') : ($t('applyColorsToAllInBoard') || 'Aplicar colores a todos los bocadillos') }}</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Diálogo de confirmación personalizado para aplicar a todos -->
-            <div v-if="showConfirmApplyAll" class="custom-confirm-backdrop">
-                <div class="custom-confirm-card p-4">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="confirm-icon-bubble">
-                            <i class="fas fa-palette"></i>
-                        </div>
-                        <div>
-                            <h4 class="mb-1 text-dark fw-bold">{{ $t('applyColorsToAllTitle') || 'Aplicar colores a todos los bocadillos' }}</h4>
-                            <div class="text-muted small">{{ $t('applyColorsToAllSubtitle') || 'Actualización de estilos en el tablero' }}</div>
-                        </div>
-                    </div>
-
-                    <div class="confirm-body-text mb-4">
-                        {{ $t('applyColorsToAllConfirmMsg') || 'Se actualizarán los colores (trazo, relleno, texto y fondo de celda) de todos los bocadillos de cómic de este tablero con los colores seleccionados actualmente.' }}
-                        <br><br>
-                        <strong>{{ $t('doYouWishToContinue') || '¿Deseas continuar y aplicar los cambios?' }}</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="button" class="btn btn-secondary px-3" @click="showConfirmApplyAll = false">
-                            <i class="fas fa-times me-1"></i> {{ $t('cancel') || 'Cancelar' }}
-                        </button>
-                        <button type="button" class="btn btn-primary px-3" @click="confirmAndApplyToAll">
-                            <i class="fas fa-check me-1"></i> {{ $t('applyToAll') || 'Aplicar a todos' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6. OPCIONES AVANZADAS: TIPOGRAFÍA, GROSOR Y VISTA PREVIA -->
+        <!-- 5. OPCIONES AVANZADAS: TIPOGRAFÍA, GROSOR, CAJETÍN DE COLORES Y VISTA PREVIA -->
         <div class="srow">
             <accordion :acc-label="$t('advancedOptions')">
                 <div class="row mb-2">
@@ -207,6 +110,96 @@
                 <slider-input label="fontSize" unit="%" id="fontSize" :show-clear-button="true" min="40" max="250" step="5" v-model.number="gridElement.fontSizePct" @input="onFontSizeChange"/>
                 <slider-input label="bubbleLineWidth" unit="px" id="lineWidth" :show-clear-button="true" min="1" max="12" step="1" v-model.number="bubbleProps.borderWidth" @input="resetTestGrid"/>
 
+                <!-- CAJETÍN DE COLORES DEL BOCADILLO (JUSTO DESPUÉS DE GROSOR DE LÍNEA) -->
+                <div class="color-section-container p-3 my-3 rounded border bg-light">
+                    <!-- 1. Color del trazo del bocadillo -->
+                    <color-palette-picker
+                        id="bubbleLineColor"
+                        label="bubbleLineColor"
+                        v-model="bubbleProps.borderColor"
+                        default-color="#111111"
+                        @input="resetTestGrid"
+                        @change="resetTestGrid" />
+
+                    <!-- 2. Color de relleno del bocadillo -->
+                    <color-palette-picker
+                        id="bubbleFillColor"
+                        label="bubbleFillColor"
+                        v-model="bubbleProps.fillColor"
+                        default-color="#ffffff"
+                        @input="resetTestGrid"
+                        @change="resetTestGrid" />
+
+                    <!-- 3. Color del texto -->
+                    <color-palette-picker
+                        id="fontColor"
+                        label="fontColor"
+                        v-model="bubbleProps.fontColor"
+                        default-color="#111111"
+                        @input="onFontColorChange"
+                        @change="onFontColorChange" />
+
+                    <!-- 4. Color de fondo de celda -->
+                    <color-palette-picker
+                        id="cellBgColor"
+                        label="cellBackgroundColor"
+                        v-model="bubbleProps.cellBgColor"
+                        default-color="transparent"
+                        :allow-transparent="true"
+                        @input="onCellBgColorChange"
+                        @change="onCellBgColorChange" />
+
+                    <!-- Botones de guardar colores y aplicar a todos los bocadillos -->
+                    <div class="row mt-3 g-2">
+                        <div class="col-12 col-md-6">
+                            <button type="button"
+                                    class="btn-save-bubble-colors w-100 d-flex align-items-center justify-content-center gap-2 py-2"
+                                    @click="saveBubbleColors">
+                                <i :class="['fas', saveSuccess ? 'fa-check' : 'fa-save']"></i>
+                                <span>{{ saveSuccess ? ($t('colorsSavedSuccess') || '¡Colores guardados!') : ($t('saveBubbleColors') || 'Guardar colores para este bocadillo') }}</span>
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <button type="button"
+                                    class="btn-apply-all-colors w-100 d-flex align-items-center justify-content-center gap-2 py-2"
+                                    @click="openApplyAllConfirm">
+                                <i :class="['fas', applyAllSuccess ? 'fa-check' : 'fa-layer-group']"></i>
+                                <span>{{ applyAllSuccess ? ($t('colorsAppliedToAllSuccess') || '¡Colores aplicados a todos!') : ($t('applyColorsToAllInBoard') || 'Aplicar colores a todos los bocadillos') }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Diálogo de confirmación personalizado para aplicar a todos -->
+                    <div v-if="showConfirmApplyAll" class="custom-confirm-backdrop">
+                        <div class="custom-confirm-card p-4">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="confirm-icon-bubble">
+                                    <i class="fas fa-palette"></i>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1 text-dark fw-bold">{{ $t('applyColorsToAllTitle') || 'Aplicar colores a todos los bocadillos' }}</h4>
+                                    <div class="text-muted small">{{ $t('applyColorsToAllSubtitle') || 'Actualización de estilos en el tablero' }}</div>
+                                </div>
+                            </div>
+
+                            <div class="confirm-body-text mb-4">
+                                {{ $t('applyColorsToAllConfirmMsg') || 'Se actualizarán los colores (trazo, relleno, texto y fondo de celda) de todos los bocadillos de cómic de este tablero con los colores seleccionados actualmente.' }}
+                                <br><br>
+                                <strong>{{ $t('doYouWishToContinue') || '¿Deseas continuar y aplicar los cambios?' }}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-secondary px-3" @click="showConfirmApplyAll = false">
+                                    <i class="fas fa-times me-1"></i> {{ $t('cancel') || 'Cancelar' }}
+                                </button>
+                                <button type="button" class="btn btn-primary px-3" @click="confirmAndApplyToAll">
+                                    <i class="fas fa-check me-1"></i> {{ $t('applyToAll') || 'Aplicar a todos' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="srow mt-3">
                     <input type="checkbox" id="inputDontCollect" v-if="gridElement" v-model="gridElement.dontCollect"/>
                     <label for="inputDontCollect" class="ms-1">{{ $t('dontAddElementToCollectElement') }}</label>
@@ -220,7 +213,7 @@
             </accordion>
         </div>
 
-        <!-- 7. TRADUCCIONES -->
+        <!-- 6. TRADUCCIONES -->
         <div class="srow">
             <accordion :acc-label="$t('Translations')">
                 <div class="row mb-2">
@@ -482,7 +475,7 @@ export default {
             this.$set(this.gridElement, 'additionalProps', {});
         }
         if (!this.gridElement.additionalProps.comicBubble) {
-            this.$set(this.gridElement.additionalProps, 'comicBubble', {
+            this.$set(this.gridElement, 'additionalProps', 'comicBubble', {
                 bubbleType: 'speech',
                 tailPosition: 'bottom-left',
                 text: '',
