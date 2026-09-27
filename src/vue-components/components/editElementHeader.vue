@@ -6,7 +6,7 @@
                     {{ header }}
                 </h1>
             </div>
-            <a v-if="openHelpFn" class="col-2 col-sm-1 col-md black order-md-3" href="javascript:;" @click="openHelpFn"><i class="fas fa-question-circle"></i></a>
+            <a v-if="openHelpFn && (!gridElement || gridElement.type !== GridElement.ELEMENT_TYPE_COMIC_BUBBLE)" class="col-2 col-sm-1 col-md black order-md-3" href="javascript:;" @click="openHelpFn"><i class="fas fa-question-circle"></i></a>
             <a v-if="closeFn" id="closeLink" :title="$t('close')" class="col-2 col-sm-1 col-md black order-md-4" href="javascript:;" @click="closeFn"><i class="fas fa-times"/></a>
             <div class="col-12 col-md-5 d-flex align-items-center order-md-2 mt-2 mt-md-0" v-if="gridElement">
                 <div v-if="gridElement.type === GridElement.ELEMENT_TYPE_NORMAL" class="d-flex align-items-center gap-2">
