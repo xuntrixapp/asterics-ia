@@ -18,9 +18,6 @@
                 </div>
                 <div v-if="gridElement.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE" class="d-flex align-items-center gap-2">
                     <span class="header-elem-title"><i class="fas fa-comment-dots me-1"></i>{{ getElementTypeName(gridElement.type) }}</span>
-                    <button type="button" class="btn-switch-type" @click="$emit('change-type', GridElement.ELEMENT_TYPE_NORMAL)" :title="$t('newElement')">
-                        <i class="fas fa-th-large"></i> <span class="hide-mobile">{{ $t('newElement') }}</span>
-                    </button>
                 </div>
                 <div v-if="gridElement.type !== GridElement.ELEMENT_TYPE_NORMAL && gridElement.type !== GridElement.ELEMENT_TYPE_COMIC_BUBBLE">
                     <span class="header-elem-title">{{ getElementTypeName(gridElement.type) }}</span>
