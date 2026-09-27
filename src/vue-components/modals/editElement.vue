@@ -4,7 +4,7 @@
             <div class="modal-wrapper">
                 <div class="modal-container modal-container-flex" @keydown.esc="$emit('close')" @keydown.ctrl.enter="save()" @keydown.ctrl.right="nextFromKeyboard()" @keydown.ctrl.left="editNext(true)" @keydown.ctrl.y="save(true)">
                     <div class="modal-header">
-                        <edit-element-header :grid-element="originalGridElement" :header="editElementId ? $t('editGridItem') : $t('newGridItem')" :close-fn="close" :open-help-fn="openHelp"></edit-element-header>
+                        <edit-element-header :grid-element="gridElement" :header="editElementId ? $t('editGridItem') : $t('newGridItem')" :close-fn="close" :open-help-fn="openHelp" @change-type="onChangeType"></edit-element-header>
                     </div>
 
                     <nav-tabs class="mb-5" :tab-labels="Object.keys(possibleTabs)" v-model="currentTab" @input="imageSearch = ''"></nav-tabs>
@@ -184,23 +184,56 @@
                         })));
                         thiz.gridData.gridElements.push(thiz.gridElement);
                     }
-                    if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_NORMAL) {
-                        thiz.possibleTabs = { TAB_GENERAL, TAB_IMAGE, TAB_WORDFORMS, TAB_ACTIONS };
-                    } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
-                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
-                    } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_YT_PLAYER) {
-                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
-                    } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_COLLECT) {
-                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
-                    } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_PREDICTION) {
-                        thiz.possibleTabs = { TAB_ACTIONS };
-                    } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_LIVE) {
-                        thiz.possibleTabs = { TAB_GENERAL, TAB_LIVE_DATA, TAB_IMAGE, TAB_ACTIONS };
-                    } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_MATRIX_CONVERSATION) {
-                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
-                    }
+                    thiz.updateTabs();
                     thiz.originalGridElement = JSON.parse(JSON.stringify(thiz.gridElement));
                 });
+            },
+            updateTabs() {
+                if (!this.gridElement) return;
+                let type = this.gridElement.type;
+                if (type === GridElement.ELEMENT_TYPE_NORMAL) {
+                    this.possibleTabs = { TAB_GENERAL, TAB_IMAGE, TAB_WORDFORMS, TAB_ACTIONS };
+                } else if (type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
+                    this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                } else if (type === GridElement.ELEMENT_TYPE_YT_PLAYER) {
+                    this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                } else if (type === GridElement.ELEMENT_TYPE_COLLECT) {
+                    this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                } else if (type === GridElement.ELEMENT_TYPE_PREDICTION) {
+                    this.possibleTabs = { TAB_ACTIONS };
+                } else if (type === GridElement.ELEMENT_TYPE_LIVE) {
+                    this.possibleTabs = { TAB_GENERAL, TAB_LIVE_DATA, TAB_IMAGE, TAB_ACTIONS };
+                } else if (type === GridElement.ELEMENT_TYPE_MATRIX_CONVERSATION) {
+                    this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                }
+            },
+            onChangeType(newType) {
+                if (!this.gridElement) return;
+                this.gridElement.type = newType;
+                if (newType === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
+                    if (!this.gridElement.additionalProps) this.$set(this.gridElement, 'additionalProps', {});
+                    if (!this.gridElement.additionalProps.comicBubble) {
+                        this.$set(this.gridElement.additionalProps, 'comicBubble', {
+                            bubbleType: 'speech',
+                            tailPosition: 'bottom-left',
+                            text: '',
+                            fontFamily: '"Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive, sans-serif',
+                            fontSizePct: 100,
+                            fontColor: '#111111',
+                            fontWeight: 'bold',
+                            fontStyle: 'normal',
+                            textAlign: 'center',
+                            borderColor: '#111111',
+                            borderWidth: 3,
+                            fillColor: '#ffffff',
+                            cellBgColor: 'transparent',
+                            comicShadow: true
+                        });
+                    }
+                }
+                this.updateTabs();
+                this.currentTab = TAB_GENERAL;
+                this.$forceUpdate();
             },
             resetInternal() {
                 this.gridElement = this.originalGridElement = null;
