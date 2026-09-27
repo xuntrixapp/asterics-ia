@@ -37,7 +37,7 @@ import $ from '../../../js/externals/jquery';
 
 export default {
     name: 'GridElementComicBubble',
-    props: ['gridElement', 'metadata', 'containerSize', 'editable', 'watchForChanges'],
+    props: ['gridElement', 'element', 'metadata', 'containerSize', 'editable', 'watchForChanges'],
     data() {
         return {
             autoFontSizePx: null,
@@ -46,8 +46,12 @@ export default {
         };
     },
     computed: {
+        targetElement() {
+            return this.gridElement || this.element || {};
+        },
         bubbleProps() {
-            return (this.gridElement && this.gridElement.additionalProps && this.gridElement.additionalProps.comicBubble) || {};
+            let el = this.targetElement;
+            return (el && el.additionalProps && el.additionalProps.comicBubble) || {};
         },
         bubbleType() {
             return this.bubbleProps.bubbleType || 'speech';
@@ -59,13 +63,15 @@ export default {
             return this.bubbleProps.fontFamily || '"Comic Neue", "Comic Sans MS", "Chalkboard SE", "Comic Relief", cursive, sans-serif';
         },
         fontSizePct() {
-            if (this.gridElement && this.gridElement.fontSizePct != null) {
-                return this.gridElement.fontSizePct;
+            let el = this.targetElement;
+            if (el && el.fontSizePct != null) {
+                return el.fontSizePct;
             }
-            return this.bubbleProps.fontSizePct || 100;
+            return (this.bubbleProps && this.bubbleProps.fontSizePct) || 100;
         },
         fontColor() {
-            return (this.gridElement && this.gridElement.fontColor) || this.bubbleProps.fontColor || '#111111';
+            let el = this.targetElement;
+            return (el && el.fontColor) || (this.bubbleProps && this.bubbleProps.fontColor) || '#111111';
         },
         fontWeight() {
             return this.bubbleProps.fontWeight || 'bold';
@@ -87,25 +93,30 @@ export default {
             return this.bubbleProps.fillColor || '#ffffff';
         },
         cellBgColor() {
-            return (this.gridElement && this.gridElement.backgroundColor) || this.bubbleProps.cellBgColor || 'transparent';
+            let el = this.targetElement;
+            return (el && el.backgroundColor) || (this.bubbleProps && this.bubbleProps.cellBgColor) || 'transparent';
         },
         comicShadow() {
             return this.bubbleProps.comicShadow !== false;
         },
         displayContent() {
-            if (!this.gridElement) return '';
-            let dynamicText = (this.externalSetLabel + '') || (this.gridElement.id ? stateService.getDisplayText(this.gridElement.id) : '');
+            let el = this.targetElement;
+            if (!el) return '';
+            let dynamicText = (this.externalSetLabel + '') || (el.id ? stateService.getDisplayText(el.id) : '');
             if (dynamicText && typeof dynamicText === 'string' && dynamicText.trim()) {
                 return dynamicText;
             }
-            let label = this.gridElement.label;
-            if (label) {
+            let label = el.label;
+            if (typeof label === 'string' && label.trim()) {
+                return label;
+            }
+            if (label && typeof label === 'object') {
                 let text = i18nService.getTranslation(label);
                 if (text && typeof text === 'string' && text.trim()) {
                     return text;
                 }
             }
-            return this.bubbleProps.text || '';
+            return (this.bubbleProps && this.bubbleProps.text) || '';
         },
         wrapperStyle() {
             return {
@@ -503,7 +514,8 @@ export default {
             });
         },
         externalUpdateFn(event, id, text) {
-            if (this.gridElement && id === this.gridElement.id) {
+            let el = this.targetElement;
+            if (el && id === el.id) {
                 this.externalSetLabel = text;
                 this.calcFontSize();
             }
@@ -511,8 +523,9 @@ export default {
     },
     mounted() {
         this.calcFontSize();
-        if (this.gridElement && this.gridElement.id) {
-            $(document).on(`${constants.EVENT_ELEM_TEXT_CHANGED}.${this.gridElement.id}`, this.externalUpdateFn);
+        let el = this.targetElement;
+        if (el && el.id) {
+            $(document).on(`${constants.EVENT_ELEM_TEXT_CHANGED}.${el.id}`, this.externalUpdateFn);
         }
         if (window.ResizeObserver && this.$refs.wrapper) {
             this.resizeObserver = new ResizeObserver(() => {
@@ -524,11 +537,15 @@ export default {
             this.$watch('gridElement', () => {
                 this.calcFontSize();
             }, { deep: true });
+            this.$watch('element', () => {
+                this.calcFontSize();
+            }, { deep: true });
         }
     },
     beforeDestroy() {
-        if (this.gridElement && this.gridElement.id) {
-            $(document).off(`${constants.EVENT_ELEM_TEXT_CHANGED}.${this.gridElement.id}`);
+        let el = this.targetElement;
+        if (el && el.id) {
+            $(document).off(`${constants.EVENT_ELEM_TEXT_CHANGED}.${el.id}`);
         }
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();

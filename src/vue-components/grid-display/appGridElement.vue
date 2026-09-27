@@ -8,7 +8,7 @@
         <grid-element-predict v-if="element.type === GridElement.ELEMENT_TYPE_PREDICTION" :grid-element="element" :metadata="metadata" :container-size="calculatedSize" v-bind="$props" aria-hidden="true"/>
         <grid-element-live v-if="element.type === GridElement.ELEMENT_TYPE_LIVE" :grid-element="element" :metadata="metadata" :container-size="calculatedSize" v-bind="$props" aria-hidden="true"/>
         <grid-element-matrix-conversation v-if="element.type === GridElement.ELEMENT_TYPE_MATRIX_CONVERSATION" :grid-element="element" :metadata="metadata" :container-size="calculatedSize" aria-hidden="true"/>
-        <grid-element-comic-bubble v-if="element.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE" :grid-element="element" :metadata="metadata" :container-size="calculatedSize" aria-hidden="true"/>
+        <grid-element-comic-bubble v-if="element.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE" :grid-element="element" :metadata="metadata" :container-size="calculatedSize" v-bind="$props" aria-hidden="true"/>
         <grid-element-child-placeholder v-if="element.type === GridElement.ELEMENT_TYPE_DYNAMIC_GRID_PLACEHOLDER"/>
         <grid-element-hints :grid-element="element" :metadata="metadata" :background-color="backgroundColor"/>
         <div v-if="showResizeHandle" class="ui-resizable-handle ui-icon ui-icon-grip-diagonal-se" style="position: absolute; z-index: 2; bottom: 0; right: 0; cursor: se-resize;"></div>
@@ -78,6 +78,9 @@ export default {
             if (this.element.type === GridElement.ELEMENT_TYPE_LIVE) {
                 return this.element.backgroundColor || constants.COLORS.LIVE_BACKGROUND;
             }
+            if (this.element.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
+                return (this.element.additionalProps && this.element.additionalProps.comicBubble && this.element.additionalProps.comicBubble.cellBgColor) || this.element.backgroundColor || constants.COLORS.TRANSPARENT;
+            }
             if ([ColorConfig.COLOR_MODE_BACKGROUND, ColorConfig.COLOR_MODE_BOTH].includes(this.metadata.colorConfig.colorMode)) {
                 return MetaData.getElementColor(this.element, this.metadata);
             }
@@ -105,7 +108,7 @@ export default {
                 return constants.COLORS.GRAY;
             }
 
-            if (this.element.type === GridElement.ELEMENT_TYPE_UI_FILLER) {
+            if (this.element.type === GridElement.ELEMENT_TYPE_UI_FILLER || this.element.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
                 return constants.COLORS.TRANSPARENT;
             }
 
