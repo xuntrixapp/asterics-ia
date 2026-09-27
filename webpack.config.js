@@ -59,7 +59,7 @@ module.exports = env => {
                 }
             },
             host: '0.0.0.0',
-            port: 8085,
+            port: 9095,
             allowedHosts: 'all',
             headers: {
                 "Access-Control-Allow-Origin": "*",
