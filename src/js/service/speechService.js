@@ -4,12 +4,14 @@ import { util } from '../util/util.js';
 import $ from '../externals/jquery.js';
 import { audioUtil } from '../util/audioUtil.js';
 import { speechServiceExternal } from './speechServiceExternal.js';
+import { kokoroService } from './kokoroService.js';
 import { localStorageService } from './data/localStorageService.js';
 import { i18nService } from './i18nService';
 import voiceUtil from '../util/voiceUtil';
 
 let speechService = {};
 
+let _ttsEngine = 'standard';
 let _preferredVoiceId = null;
 let _secondVoiceId = null;
 let _voicePitch = 1;
@@ -99,6 +101,34 @@ speechService.speak = async function (textOrOject, options = {}) {
     if (!options.dontStop) {
         speechService.stopSpeaking();
     }
+
+    // Ruta exclusiva para Kokoro TTS
+    if (_ttsEngine === constants.TTS_ENGINE_KOKORO) {
+        hasSpoken = true;
+        let kokoroVoiceToUse = options.preferredVoice || userSettings.voiceConfig.kokoroVoice || undefined;
+        await kokoroService.speak(text, {
+            preferredVoice: kokoroVoiceToUse,
+            lang: langToUse,
+            rate: options.rate || (options.useStandardRatePitch ? 1 : _voiceRate),
+            pitch: options.useStandardRatePitch ? 1 : _voicePitch,
+            voiceLangIsTextLang: options.voiceLangIsTextLang,
+            dontStop: options.dontStop,
+            progressFn: options.progressFn
+        });
+        testIsSpeaking();
+        setTimeout(() => {
+            testIsSpeaking();
+        }, 300);
+        if (_secondVoiceId && options.speakSecondary) {
+            speechService.speakAfterFinished(textOrOject, {
+                preferredVoice: _secondVoiceId,
+                useStandardRatePitch: true,
+                voiceLangIsTextLang: true
+            });
+        }
+        return;
+    }
+
     let voices = getVoicesById(preferredVoiceId) || getVoicesByLang(langToUse);
     let nativeVoices = voices.filter((voice) => voice.type === constants.VOICE_TYPE_NATIVE);
     let responsiveVoices = voices.filter((voice) => voice.type === constants.VOICE_TYPE_RESPONSIVEVOICE);
@@ -238,6 +268,7 @@ speechService.stopSpeaking = function () {
     isSpeakingNative = false;
     startedSpeakingRV = false;
     _speakArrayRunId = null;
+    kokoroService.stop();
     if (window.AndroidTTS && window.AndroidTTS.stop) {
         window.AndroidTTS.stop();
     }
@@ -249,6 +280,9 @@ speechService.stopSpeaking = function () {
 };
 
 speechService.isSpeaking = async function () {
+    if (kokoroService.isSpeaking()) {
+        return true;
+    }
     if (window.AndroidTTS && window.AndroidTTS.isSpeaking) {
         if (window.AndroidTTS.isSpeaking()) {
             return true;
@@ -508,6 +542,7 @@ init();
 function updateSettings() {
     let userSettings = localStorageService.getUserSettings();
     let voiceConfig = userSettings.voiceConfig || {};
+    _ttsEngine = voiceConfig.ttsEngine || 'standard';
     _preferredVoiceId = voiceConfig.preferredVoice || null;
     _voicePitch = voiceConfig.voicePitch || 1;
     _voiceRate = voiceConfig.voiceRate || 1;

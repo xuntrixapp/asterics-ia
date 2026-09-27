@@ -6,6 +6,10 @@ class VoiceConfig {
      * @param settings.voicePitch
      * @param settings.voiceRate
      * @param settings.waitForSpeechToFinish
+     * @param settings.ttsEngine
+     * @param settings.kokoroVoice
+     * @param settings.kokoroServerUrl
+     * @param settings.kokoroCacheLimitMb
      */
     constructor(settings) {
         settings = settings || {};
@@ -15,6 +19,10 @@ class VoiceConfig {
         this.voicePitch = settings.voicePitch;
         this.voiceRate = settings.voiceRate;
         this.waitForSpeechToFinish = settings.waitForSpeechToFinish;
+        this.ttsEngine = settings.ttsEngine || 'standard';
+        this.kokoroVoice = settings.kokoroVoice || undefined;
+        this.kokoroServerUrl = settings.kokoroServerUrl || '';
+        this.kokoroCacheLimitMb = settings.kokoroCacheLimitMb !== undefined ? settings.kokoroCacheLimitMb : 500;
     }
 }
 
