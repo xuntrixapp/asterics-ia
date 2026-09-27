@@ -89,7 +89,7 @@ async function init() {
 init();
 
 function initServiceWorker() {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || (!constants.IS_ENVIRONMENT_PROD && !constants.FORCE_USE_SW)) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.AndroidNative || window.AndroidTTS || (!constants.IS_ENVIRONMENT_PROD && !constants.FORCE_USE_SW)) {
         if (navigator.serviceWorker) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let registration of registrations) {
@@ -97,7 +97,14 @@ function initServiceWorker() {
                 }
             });
         }
-        log.warn('Not installing Service Worker because on development/localhost environment.');
+        if (typeof window !== 'undefined' && 'caches' in window) {
+            caches.keys().then(keys => {
+                for (let key of keys) {
+                    caches.delete(key);
+                }
+            });
+        }
+        log.warn('Not installing Service Worker on local or native Android environment.');
         return;
     }
     if (constants.SUPPORTS_SERVICE_WORKER) {

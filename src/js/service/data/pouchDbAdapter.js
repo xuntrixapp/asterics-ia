@@ -1,5 +1,6 @@
 import $ from '../../externals/jquery.js';
 import PouchDB from 'PouchDB';
+import superlogin from 'superlogin-client';
 import { localStorageService } from './localStorageService';
 import { encryptionService } from './encryptionService';
 import { constants } from '../../util/constants';

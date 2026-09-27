@@ -16,53 +16,64 @@
                         </h1>
                     </div>
 
-                    <!-- BARRA DE HERRAMIENTAS: BÚSQUEDA Y AÑADIR -->
-                    <div class="groq-dict-toolbar" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <div style="flex: 1; min-width: 240px; position: relative;">
+                    <input type="file" ref="dictFileInput" accept=".json" style="display: none;" @change="handleFileImport"/>
+
+                    <!-- CUERPO PRINCIPAL -->
+                    <div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding: 0 4px;">
+                        <!-- BARRA DE BÚSQUEDA A ANCHO COMPLETO -->
+                        <div class="groq-dict-search-row">
                             <input 
                                 type="text" 
                                 v-model="searchQuery" 
                                 :placeholder="t('groqDictSearchPlaceholder')" 
-                                style="width: 100%; margin-bottom: 0; padding-left: 32px;"
+                                class="groq-dict-search-input"
                             />
-                            <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9e9e9e;"></i>
+                            <i class="fas fa-search groq-dict-search-icon"></i>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="button button-primary" style="margin-bottom: 0; display: inline-flex; align-items: center; gap: 6px;" @click="showAddForm = !showAddForm">
+
+                        <!-- FILA DE LOS 4 BOTONES DIMENSIONADOS A ANCHO COMPLETO -->
+                        <div class="groq-dict-buttons-row">
+                            <button class="button button-primary groq-toolbar-btn" @click="showAddForm = !showAddForm" :title="t('groqDictAddNew')">
                                 <i :class="showAddForm ? 'fas fa-minus' : 'fas fa-plus'"></i>
-                                {{ t('groqDictAddNew') }}
+                                <span>{{ t('groqDictAddNew') }}</span>
                             </button>
-                            <button v-if="entries.length > 0" class="button button-outline" style="margin-bottom: 0; color: #d32f2f; border-color: #d32f2f;" @click="clearAll">
+                            <button class="button button-outline groq-toolbar-btn btn-blue" @click="triggerFileImport" :title="t('groqDictImport')">
+                                <i class="fas fa-file-upload"></i>
+                                <span>{{ t('groqDictImport') }}</span>
+                            </button>
+                            <button class="button button-outline groq-toolbar-btn btn-green" @click="exportDictionary" :disabled="entries.length === 0" :title="t('groqDictExport')">
+                                <i class="fas fa-file-download"></i>
+                                <span>{{ t('groqDictExport') }}</span>
+                            </button>
+                            <button class="button button-outline groq-toolbar-btn btn-red" @click="clearAll" :disabled="entries.length === 0" :title="t('groqDictConfirmClearAll')">
                                 <i class="fas fa-trash"></i>
+                                <span>{{ t('groqDictClearAll') }}</span>
                             </button>
                         </div>
-                    </div>
 
-                    <!-- FORMULARIO DE AÑADIR NUEVA FRASE MANUALMENTE -->
-                    <div v-if="showAddForm" class="groq-dict-add-box" style="background: #f1f8e9; border: 1px solid #c5e1a5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-                        <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 1em; color: #2e7d32;">
-                            <i class="fas fa-plus-circle"></i> {{ t('groqDictAddNew') }}
-                        </h4>
-                        <div class="row" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <div style="flex: 1; min-width: 200px;">
-                                <label style="font-size: 0.85em; margin-bottom: 2px;">{{ t('groqDictColPictos') }}:</label>
-                                <input type="text" v-model="newRawText" placeholder="ej: quiero ir cine papa" style="margin-bottom: 0; width: 100%;"/>
+                        <!-- FORMULARIO DE AÑADIR NUEVA FRASE MANUALMENTE -->
+                        <div v-if="showAddForm" class="groq-dict-add-box" style="background: #f1f8e9; border: 1px solid #c5e1a5; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                            <h4 style="margin-top: 0; margin-bottom: 8px; font-size: 1em; color: #2e7d32;">
+                                <i class="fas fa-plus-circle"></i> {{ t('groqDictAddNew') }}
+                            </h4>
+                            <div class="row" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <label style="font-size: 0.85em; margin-bottom: 2px;">{{ t('groqDictColPictos') }}:</label>
+                                    <input type="text" v-model="newRawText" placeholder="ej: quiero ir cine papa" style="margin-bottom: 0; width: 100%;"/>
+                                </div>
+                                <div style="flex: 1.5; min-width: 240px;">
+                                    <label style="font-size: 0.85em; margin-bottom: 2px;">{{ t('groqDictColSentence') }}:</label>
+                                    <input type="text" v-model="newSentence" placeholder="ej: Quiero ir al cine con papá." style="margin-bottom: 0; width: 100%;"/>
+                                </div>
                             </div>
-                            <div style="flex: 1.5; min-width: 240px;">
-                                <label style="font-size: 0.85em; margin-bottom: 2px;">{{ t('groqDictColSentence') }}:</label>
-                                <input type="text" v-model="newSentence" placeholder="ej: Quiero ir al cine con papá." style="margin-bottom: 0; width: 100%;"/>
+                            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                                <button class="button" style="margin-bottom: 0;" @click="showAddForm = false">{{ t('cancel') }}</button>
+                                <button class="button button-primary" style="margin-bottom: 0;" @click="saveNewEntry" :disabled="!newRawText.trim() || !newSentence.trim()">
+                                    <i class="fas fa-save"></i> {{ t('groqDictSave') }}
+                                </button>
                             </div>
                         </div>
-                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
-                            <button class="button" style="margin-bottom: 0;" @click="showAddForm = false">{{ t('cancel') }}</button>
-                            <button class="button button-primary" style="margin-bottom: 0;" @click="saveNewEntry" :disabled="!newRawText.trim() || !newSentence.trim()">
-                                <i class="fas fa-save"></i> {{ t('groqDictSave') }}
-                            </button>
-                        </div>
-                    </div>
 
-                    <!-- CUERPO PRINCIPAL: TABLA DE 2 COLUMNAS -->
-                    <div class="modal-body" style="max-height: 55vh; overflow-y: auto; padding: 0 4px;">
                         <div v-if="filteredEntries.length === 0" style="text-align: center; padding: 3em 1em; color: #757575;">
                             <i class="fas fa-book-open fa-3x" style="margin-bottom: 0.5em; opacity: 0.4;"></i>
                             <p v-if="searchQuery.trim()">No se encontraron frases que coincidan con "{{ searchQuery }}"</p>
@@ -174,6 +185,43 @@
                         </span>
                         <button class="button" @click="$emit('close')">{{ t('close') }}</button>
                     </div>
+
+                    <!-- DIÁLOGO PERSONALIZADO DE CONFIRMACIÓN / AVISO (Sin ventanas del navegador ni textos de localhost) -->
+                    <div v-if="confirmDialog.show" class="groq-dict-dialog-overlay" @click.self="closeConfirmDialog">
+                        <div class="groq-dict-dialog-box">
+                            <div class="groq-dict-dialog-header" :class="confirmDialog.isDanger ? 'dialog-header-danger' : 'dialog-header-info'">
+                                <i :class="confirmDialog.icon" style="margin-right: 10px; font-size: 1.25em;"></i>
+                                <h3>{{ confirmDialog.title }}</h3>
+                            </div>
+                            <div class="groq-dict-dialog-body">
+                                <p class="groq-dialog-msg">{{ confirmDialog.message }}</p>
+                                <div v-if="confirmDialog.item" class="groq-dialog-item-preview">
+                                    <div class="groq-dialog-preview-sentence">{{ confirmDialog.item.sentence }}</div>
+                                    <div class="groq-dialog-preview-raw" v-if="confirmDialog.item.rawText">
+                                        <i class="fas fa-cubes"></i> {{ confirmDialog.item.rawText }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="groq-dict-dialog-footer">
+                                <button v-if="!confirmDialog.isAlert" class="button" @click="closeConfirmDialog">
+                                    {{ t('cancel') }}
+                                </button>
+                                <button 
+                                    v-if="!confirmDialog.isAlert" 
+                                    class="button button-primary" 
+                                    :class="confirmDialog.isDanger ? 'btn-dialog-danger' : ''"
+                                    @click="executeConfirmAction"
+                                >
+                                    <i :class="confirmDialog.confirmIcon"></i>
+                                    <span>{{ confirmDialog.confirmText }}</span>
+                                </button>
+                                <button v-if="confirmDialog.isAlert" class="button button-primary" @click="closeConfirmDialog">
+                                    <i class="fas fa-check"></i>
+                                    <span>{{ t('ok') || 'Aceptar' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -181,6 +229,8 @@
 </template>
 
 <script>
+    import FileSaver from 'file-saver';
+    import { fileUtil } from '../../js/util/fileUtil.js';
     import { groqService } from '../../js/service/groqService.js';
     import { speechService } from '../../js/service/speechService.js';
     import { util } from '../../js/util/util.js';
@@ -196,7 +246,19 @@
                 searchQuery: '',
                 showAddForm: false,
                 newRawText: '',
-                newSentence: ''
+                newSentence: '',
+                confirmDialog: {
+                    show: false,
+                    type: '',
+                    isDanger: false,
+                    isAlert: false,
+                    icon: '',
+                    title: '',
+                    message: '',
+                    item: null,
+                    confirmText: '',
+                    confirmIcon: ''
+                }
             };
         },
         computed: {
@@ -277,10 +339,62 @@
                 }
             },
             deleteEntry(item) {
-                if (window.confirm(this.t('groqDictConfirmDelete'))) {
-                    groqService.deleteDictionaryEntry(item.key);
+                this.confirmDialog = {
+                    show: true,
+                    type: 'delete_single',
+                    isDanger: true,
+                    isAlert: false,
+                    icon: 'fas fa-trash-alt',
+                    title: this.t('delete') || 'Eliminar frase',
+                    message: this.t('groqDictConfirmDelete') || '¿Deseas eliminar esta frase del diccionario? Se eliminará tanto del dispositivo como del servidor.',
+                    item: item,
+                    confirmText: this.t('delete') || 'Eliminar',
+                    confirmIcon: 'fas fa-trash-alt'
+                };
+            },
+            clearAll() {
+                this.confirmDialog = {
+                    show: true,
+                    type: 'clear_all',
+                    isDanger: true,
+                    isAlert: false,
+                    icon: 'fas fa-exclamation-triangle',
+                    title: this.t('groqDictClearAll') || 'Vaciar todo el diccionario',
+                    message: this.t('groqDictConfirmClearAll') || '¿Estás seguro de que deseas vaciar todas las frases del diccionario y la caché? Esta acción eliminará permanentemente todas las frases del dispositivo y del servidor.',
+                    item: null,
+                    confirmText: this.t('groqDictClearAll') || 'Vaciar todo',
+                    confirmIcon: 'fas fa-trash'
+                };
+            },
+            closeConfirmDialog() {
+                this.confirmDialog.show = false;
+                this.confirmDialog.item = null;
+            },
+            async executeConfirmAction() {
+                const type = this.confirmDialog.type;
+                const item = this.confirmDialog.item;
+                this.closeConfirmDialog();
+                if (type === 'delete_single' && item) {
+                    await groqService.deleteDictionaryEntry(item.key);
                     this.entries = this.entries.filter(e => e.key !== item.key);
+                } else if (type === 'clear_all') {
+                    await groqService.clearDictionary();
+                    this.entries = [];
                 }
+            },
+            showAlert(message, title = '', isError = false) {
+                this.confirmDialog = {
+                    show: true,
+                    type: 'alert',
+                    isDanger: isError,
+                    isAlert: true,
+                    icon: isError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle',
+                    title: title || (isError ? 'Error' : 'Información'),
+                    message: message,
+                    item: null,
+                    confirmText: this.t('ok') || 'Aceptar',
+                    confirmIcon: 'fas fa-check'
+                };
             },
             saveNewEntry() {
                 if (!this.newRawText.trim() || !this.newSentence.trim()) return;
@@ -290,20 +404,140 @@
                 this.showAddForm = false;
                 this.loadEntries();
             },
-            clearAll() {
-                if (window.confirm(this.t('groqDictConfirmClearAll'))) {
-                    groqService.clearDictionary();
-                    this.entries = [];
+            triggerFileImport() {
+                if (this.$refs.dictFileInput) {
+                    this.$refs.dictFileInput.value = '';
+                    this.$refs.dictFileInput.click();
                 }
+            },
+            async handleFileImport(event) {
+                let file = event.target.files && event.target.files[0];
+                if (!file) return;
+                try {
+                    let content = await fileUtil.readFileContent(file);
+                    let data = JSON.parse(content);
+                    let importCount = 0;
+
+                    let list = Array.isArray(data) ? data : (data.groqPhrases || (typeof data === 'object' ? Object.keys(data).map(k => ({ key: k, ...(data[k] || {}) })) : []));
+                    for (let item of list) {
+                        let raw = item.rawText || item.raw || '';
+                        let sentence = item.sentence || item.text || (typeof item === 'string' ? item : '');
+                        if (raw && sentence) {
+                            groqService.addCustomDictionaryEntry(raw, sentence, item);
+                            importCount++;
+                        }
+                    }
+                    this.loadEntries();
+                    let msg = this.t('groqDictImportSuccess', { count: importCount });
+                    this.showAlert(msg, this.t('groqDictImport') || 'Importar diccionario');
+                } catch (e) {
+                    console.error('Error importing phrases:', e);
+                    this.showAlert('Error al leer el archivo JSON: ' + (e.message || e), 'Error', true);
+                }
+            },
+            exportDictionary() {
+                let list = groqService.getDictionaryEntries();
+                if (!list || list.length === 0) return;
+                let exportData = list.map(item => ({
+                    rawText: item.rawText,
+                    sentence: item.sentence,
+                    key: item.key,
+                    timestamp: item.timestamp
+                }));
+                let blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json;charset=utf-8' });
+                let dateStr = new Date().toISOString().slice(0, 10);
+                FileSaver.saveAs(blob, `diccionario_frases_ia_${dateStr}.json`);
             }
         },
         mounted() {
             this.loadEntries();
+            $(document).on(constants.EVENT_GROQ_RECENT_UPDATED, this.loadEntries);
+        },
+        beforeDestroy() {
+            $(document).off(constants.EVENT_GROQ_RECENT_UPDATED, this.loadEntries);
         }
     };
 </script>
 
 <style scoped>
+    .groq-dict-search-row {
+        position: relative;
+        width: 100%;
+        margin-bottom: 8px;
+        box-sizing: border-box;
+    }
+    .groq-dict-search-input {
+        width: 100% !important;
+        margin-bottom: 0 !important;
+        padding-left: 36px !important;
+        height: 38px !important;
+        box-sizing: border-box !important;
+        border-radius: 6px !important;
+    }
+    .groq-dict-search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9e9e9e;
+        font-size: 0.95em;
+    }
+    .groq-dict-buttons-row {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+        margin-bottom: 12px;
+        box-sizing: border-box;
+        align-items: stretch;
+    }
+    .groq-toolbar-btn {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        margin-bottom: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        padding: 0 8px !important;
+        height: 42px !important;
+        line-height: 42px !important;
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
+        border-radius: 6px !important;
+        text-align: center !important;
+        cursor: pointer;
+    }
+    .groq-toolbar-btn i {
+        font-size: 1.1em !important;
+    }
+    .groq-toolbar-btn:disabled {
+        opacity: 0.45 !important;
+        cursor: not-allowed !important;
+        border-color: #ccc !important;
+        color: #888 !important;
+    }
+    .groq-toolbar-btn.btn-blue {
+        color: #1565c0 !important;
+        border-color: #1565c0 !important;
+    }
+    .groq-toolbar-btn.btn-green {
+        color: #2e7d32 !important;
+        border-color: #2e7d32 !important;
+    }
+    .groq-toolbar-btn.btn-red {
+        color: #d32f2f !important;
+        border-color: #d32f2f !important;
+    }
+    @media (max-width: 600px) {
+        .groq-dict-buttons-row {
+            flex-wrap: wrap;
+        }
+        .groq-toolbar-btn {
+            flex: 1 1 45% !important;
+        }
+    }
     .groq-dict-row {
         display: flex;
         align-items: center;
@@ -382,5 +616,99 @@
             justify-content: flex-end;
             margin-top: 6px;
         }
+    }
+
+    /* DIÁLOGO PERSONALIZADO DE CONFIRMACIÓN / AVISO */
+    .groq-dict-dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10050;
+        animation: groqFadeIn 0.2s ease-out;
+    }
+    .groq-dict-dialog-box {
+        background: #ffffff;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 480px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+        animation: groqPopIn 0.2s ease-out;
+    }
+    .groq-dict-dialog-header {
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        color: #ffffff;
+    }
+    .dialog-header-danger {
+        background: linear-gradient(135deg, #d32f2f, #b71c1c);
+    }
+    .dialog-header-info {
+        background: linear-gradient(135deg, #1976d2, #1565c0);
+    }
+    .groq-dict-dialog-header h3 {
+        margin: 0;
+        font-size: 1.15em;
+        color: #ffffff;
+        font-weight: 600;
+    }
+    .groq-dict-dialog-body {
+        padding: 20px;
+        font-size: 1.05rem;
+        color: #37474f;
+        line-height: 1.5;
+    }
+    .groq-dialog-msg {
+        margin: 0;
+    }
+    .groq-dialog-item-preview {
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-left: 4px solid #d32f2f;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin-top: 14px;
+    }
+    .groq-dialog-preview-sentence {
+        font-weight: 600;
+        color: #212121;
+        font-size: 1.05rem;
+    }
+    .groq-dialog-preview-raw {
+        font-size: 0.85rem;
+        color: #757575;
+        margin-top: 4px;
+    }
+    .groq-dict-dialog-footer {
+        padding: 12px 20px;
+        background: #fafafa;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .btn-dialog-danger {
+        background-color: #d32f2f !important;
+        border-color: #d32f2f !important;
+        color: #ffffff !important;
+    }
+    .btn-dialog-danger:hover {
+        background-color: #b71c1c !important;
+        border-color: #b71c1c !important;
+    }
+    @keyframes groqFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes groqPopIn {
+        from { transform: scale(0.92); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
     }
 </style>

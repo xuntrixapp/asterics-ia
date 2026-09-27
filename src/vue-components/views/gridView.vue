@@ -17,12 +17,11 @@
                 <i class="fas fa-lock"></i>
                 <span class="hide-mobile">{{ $t('lock') }}</span>
             </button>
-            <button tabindex="35" v-if="isGroqActive" @click="openModal(modalTypes.MODAL_GROQ_RECENT)" class="small spaced" :title="groqStatusTooltip" style="display: inline-flex; align-items: center;">
+            <button tabindex="35" v-if="isGroqActive" @click="openModal(modalTypes.MODAL_GROQ_RECENT)" class="small spaced" :title="groqStatusTooltip" :aria-label="$t('groqRecentPhrases')" style="display: inline-flex; align-items: center; justify-content: center;">
                 <span class="groq-status-dot" :class="'groq-status-' + groqStatus"></span>
-                <i class="fas fa-history" style="margin-right: 4px;"></i>
-                <span class="hide-mobile">{{ $t('groqRecentPhrases') }}</span>
+                <i class="fas fa-history"></i>
             </button>
-            <button tabindex="32" v-show="!metadata.locked" @click="systemActionService.enterFullscreen()" class="spaced small" :aria-label="$t('fullscreen')"><i class="fas fa-expand"/> <span class="hide-mobile">{{ $t('fullscreen') }}</span></button>
+            <button tabindex="32" @click="systemActionService.enterFullscreen()" class="spaced small" :aria-label="$t('fullscreen')"><i class="fas fa-expand"/> <span class="hide-mobile">{{ $t('fullscreen') }}</span></button>
         </header>
         <div class="srow content text-content" v-show="!renderGridData">
             <div class="grid-container grid-mask">
@@ -175,6 +174,10 @@
                     return this.$t('groqStatusOffline');
                 }
                 return this.$t('groqStatusOnline');
+            },
+            isAndroidApp() {
+                if (typeof window === 'undefined') return false;
+                return !!(window.AndroidNative || window.AndroidTTS || window.AndroidFileExport);
             }
         },
         components: {
@@ -231,11 +234,12 @@
                 }, 3000);
                 if (thiz.unlockCounter === 0 || force) {
                     thiz.metadata.locked = false;
+                    thiz.metadata.fullscreen = false;
                     thiz.unlockCounter = UNLOCK_COUNT;
                     localStorageService.save('AG_APP_LOCKED', 'false');
+                    dataService.saveMetadata(thiz.metadata);
                     this.setViewPropsUnlocked();
                     kioskService.unlockApp();
-                    dataService.saveMetadata(thiz.metadata);
                 }
             },
             setViewPropsLocked() {

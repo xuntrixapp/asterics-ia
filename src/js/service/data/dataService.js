@@ -8,6 +8,7 @@ import { databaseService } from './databaseService';
 import { dataUtil } from '../../util/dataUtil';
 import { pouchDbService } from './pouchDbService';
 import { Dictionary } from '../../model/Dictionary';
+import { GroqPhrase } from '../../model/GroqPhrase';
 import { obfConverter } from '../../util/obfConverter';
 import { fileUtil } from '../../util/fileUtil';
 import { i18nService } from '../i18nService';
@@ -378,6 +379,140 @@ dataService.saveDictionary = function (dictionaryData) {
 };
 
 /**
+ * Obtiene todas las frases generadas por IA almacenadas en la base de datos (PouchDB / CouchDB)
+ * @return {Promise<GroqPhrase[]>}
+ */
+dataService.getGroqPhrases = function () {
+    return new Promise((resolve) => {
+        databaseService.getObject(GroqPhrase).then((phrases) => {
+            if (!phrases) {
+                resolve([]);
+                return;
+            }
+            let currentUser = dataService.getCurrentUser();
+            let retVal =
+                phrases instanceof Array
+                    ? phrases.map((p) => new GroqPhrase(p))
+                    : [new GroqPhrase(phrases)];
+            if (currentUser) {
+                let lowerUser = currentUser.toLowerCase();
+                retVal = retVal.filter((p) => !p.userId || p.userId.toLowerCase() === lowerUser);
+            }
+            resolve(retVal);
+        }).catch(() => {
+            resolve([]);
+        });
+    });
+};
+
+/**
+ * Guarda o actualiza una frase generada por IA en la base de datos sincronizada del usuario
+ * @param {Object|GroqPhrase} phraseData
+ * @return {Promise}
+ */
+dataService.saveGroqPhrase = function (phraseData) {
+    if (!phraseData) return Promise.resolve(null);
+    let phrase = new GroqPhrase(phraseData);
+    if (!phrase.userId) {
+        phrase.userId = dataService.getCurrentUser() || 'default';
+    }
+    return databaseService.saveObject(GroqPhrase, phrase);
+};
+
+/**
+ * Elimina una frase de la base de datos sincronizada registrando un tombstone (marca de borrado)
+ * para que todos los dispositivos sincronizados purguen su caché local.
+ * @param {string} keyOrId
+ * @return {Promise}
+ */
+dataService.deleteGroqPhrase = async function (keyOrId) {
+    if (!keyOrId) return Promise.resolve();
+    try {
+        let currentUser = dataService.getCurrentUser() || 'default';
+        let now = Date.now();
+        let clean = (keyOrId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        let docId = keyOrId.startsWith('groqphrase_') ? keyOrId : ('groqphrase_' + clean);
+
+        // 1. Guardar tombstone sincronizado
+        let tombstone = new GroqPhrase({
+            id: docId,
+            userId: currentUser,
+            phraseKey: keyOrId,
+            rawText: '',
+            sentence: '',
+            deleted: true,
+            deletedAt: now,
+            timestamp: now
+        });
+        await databaseService.saveObject(GroqPhrase, tombstone);
+
+        // 2. Si existían documentos previos con IDs alternativos para esta misma clave, marcarlos también
+        let docs = await databaseService.getObjectsForDeletion(GroqPhrase);
+        if (docs && docs.length > 0) {
+            let toDelete = docs.filter(d => {
+                if (!d) return false;
+                let dId = d.id || d._id || '';
+                let dPhraseKey = d.phraseKey || '';
+                let dRaw = d.rawText || '';
+                return (dId === keyOrId || dPhraseKey === keyOrId || (dRaw && dRaw === keyOrId)) && dId !== docId;
+            });
+            if (toDelete.length > 0) {
+                await databaseService.bulkDelete(toDelete);
+            }
+        }
+    } catch (e) {
+        log.warn('[Groq] Error deleting groq phrase:', e);
+    }
+    return Promise.resolve();
+};
+
+/**
+ * Elimina una frase por su phraseKey
+ * @param {string} phraseKey
+ * @return {Promise}
+ */
+dataService.deleteGroqPhraseByKey = function (phraseKey) {
+    return dataService.deleteGroqPhrase(phraseKey);
+};
+
+/**
+ * Elimina todas las frases generadas por IA de la base de datos sincronizada
+ * guardando un marcador global de purga (global tombstone)
+ * @return {Promise}
+ */
+dataService.clearGroqPhrases = async function () {
+    try {
+        let currentUser = dataService.getCurrentUser() || 'default';
+        let now = Date.now();
+
+        // 1. Guardar marcador global de purga
+        let globalTombstone = new GroqPhrase({
+            id: 'groqphrase_tombstone_global',
+            userId: currentUser,
+            phraseKey: '__GLOBAL_PURGE__',
+            rawText: '',
+            sentence: '',
+            deleted: true,
+            deletedAt: now,
+            timestamp: now
+        });
+        await databaseService.saveObject(GroqPhrase, globalTombstone);
+
+        // 2. Eliminar documentos individuales previos de la base de datos
+        let deleteDocs = await databaseService.getObjectsForDeletion(GroqPhrase);
+        if (deleteDocs && deleteDocs.length > 0) {
+            let toRemove = deleteDocs.filter(d => (d.id || d._id) !== 'groqphrase_tombstone_global');
+            if (toRemove.length > 0) {
+                await databaseService.bulkDelete(toRemove);
+            }
+        }
+    } catch (e) {
+        log.warn('[Groq] Error clearing groq phrases:', e);
+    }
+    return Promise.resolve();
+};
+
+/**
  * Deletes any kind of object directly saved in the database (e.g. GridData, Dictionary, ...)
  *
  * @param id the ID of the object to delete.
@@ -461,6 +596,7 @@ dataService.getBackupData = async function (gridIds, options = {}) {
     if (options.exportDictionaries) {
         backupData.dictionaries = await dataService.getDictionaries();
     }
+    backupData.groqPhrases = await dataService.getGroqPhrases();
 
     let currentMetadata = await dataService.getMetadata();
     if (options.exportUserSettings) {
@@ -744,6 +880,12 @@ dataService.importData = async function (data, options) {
         importData.dictionaries = importData.dictionaries.map((dict) => new Dictionary(dict));
         await databaseService.bulkSave(importData.dictionaries);
         predictionService.init();
+    }
+
+    if (importData.groqPhrases && Array.isArray(importData.groqPhrases)) {
+        for (let phrase of importData.groqPhrases) {
+            await dataService.saveGroqPhrase(phrase);
+        }
     }
 
     log.debug('pre-caching all images of gridset ...');

@@ -2,6 +2,7 @@ import { L } from '../util/lquery.js';
 import {speechService} from "../service/speechService.js";
 
 let Clicker = {};
+let globalLastOnClick = 0;
 
 Clicker.getInstanceFromConfig = function (inputConfig, itemSelector) {
     return new ClickerConstructor(itemSelector, {
@@ -17,13 +18,13 @@ function ClickerConstructor(itemSelector, options) {
     let _itemSelector = itemSelector;
     let _selectionListener = null;
     let _elements = [];
-    let lastOnClick = 0;
 
     function onclick(event) {
-        if (new Date().getTime() - lastOnClick < 100) {
+        let now = new Date().getTime();
+        if (now - globalLastOnClick < 250) {
             return;
         }
-        lastOnClick = new Date().getTime();
+        globalLastOnClick = now;
         if (_selectionListener) {
             _selectionListener(event.currentTarget);
         }

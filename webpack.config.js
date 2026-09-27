@@ -29,7 +29,7 @@ module.exports = env => {
         }
     };
 
-    let publicPath = env.production ? buildDir : `/${buildDir}`
+    let publicPath = 'auto';
     return {
         mode: mode,
         devtool: mode === 'production' ? false : 'eval-source-map', // Enable source maps in development

@@ -87,8 +87,9 @@ databaseService.getObjectsForDeletion = async function (objectType = null, id = 
     let conflictDocs = [];
     for (let deleteObject of resultDocs) {
         let conflictRevs = deleteObject._conflicts || [];
+        let docId = deleteObject._id || deleteObject.id;
         let docs = conflictRevs.map(rev => {
-            return {id: deleteObject.id, _id: deleteObject.id, _rev: rev};
+            return {id: docId, _id: docId, _rev: rev};
         });
         conflictDocs = conflictDocs.concat(docs);
     }
@@ -192,7 +193,7 @@ databaseService.bulkDelete = function (objectList) {
         return Promise.resolve();
     }
     let deletedObjects = objectList.map(e => ({
-        _id: e.id,
+        _id: e._id || e.id,
         _rev: e._rev,
         _deleted: true
     }));

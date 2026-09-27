@@ -50,7 +50,16 @@ systemActionService.doAction = async function(action) {
     }
 };
 
+let _lastActionTimestamp = 0;
+let _lastActionType = null;
+
 systemActionService.enterFullscreen = async function(dontSave) {
+    let now = Date.now();
+    if (_lastActionType === GridActionSystem.actions.SYS_LEAVE_FULLSCREEN && (now - _lastActionTimestamp < 500)) {
+        return;
+    }
+    _lastActionType = GridActionSystem.actions.SYS_ENTER_FULLSCREEN;
+    _lastActionTimestamp = now;
     util.openFullscreen();
     let metadata = await dataService.getMetadata();
     metadata.fullscreen = true;
@@ -65,8 +74,14 @@ systemActionService.exitFullscreen = async function() {
     if (!dataService.getCurrentUser()) {
         return;
     }
-    util.closeFullscreen();
     let metadata = await dataService.getMetadata();
+    let wasFs = util.isFullscreen() || (metadata && metadata.fullscreen);
+    if (!wasFs) {
+        return;
+    }
+    _lastActionType = GridActionSystem.actions.SYS_LEAVE_FULLSCREEN;
+    _lastActionTimestamp = Date.now();
+    util.closeFullscreen();
     if (metadata.fullscreen) {
         metadata.fullscreen = false;
         await dataService.saveMetadata(metadata);
@@ -77,7 +92,8 @@ systemActionService.exitFullscreen = async function() {
 };
 
 systemActionService.toggleFullscreen = async function() {
-    if (util.isFullscreen()) {
+    let metadata = await dataService.getMetadata();
+    if (util.isFullscreen() || (metadata && metadata.fullscreen)) {
         await systemActionService.exitFullscreen();
     } else {
         await systemActionService.enterFullscreen();

@@ -6,7 +6,11 @@ jest.mock('./i18nService.js', () => ({
 }));
 jest.mock('./data/dataService.js', () => ({
     dataService: {
-        getMetadata: jest.fn().mockResolvedValue({ groqApiKey: 'dummy', groqModel: 'openai/gpt-oss-120b', groqGender: 'neutral' })
+        getMetadata: jest.fn().mockResolvedValue({ groqApiKey: 'dummy', groqModel: 'openai/gpt-oss-120b', groqGender: 'neutral' }),
+        getGroqPhrases: jest.fn().mockResolvedValue([]),
+        saveGroqPhrase: jest.fn().mockResolvedValue({}),
+        deleteGroqPhrase: jest.fn().mockResolvedValue({}),
+        clearGroqPhrases: jest.fn().mockResolvedValue({})
     }
 }));
 jest.mock('./data/localStorageService.js', () => ({
@@ -115,8 +119,8 @@ describe('groqService tests', () => {
         expect(groqService.analyzeTemporalContext([])).toBe('');
     });
 
-    test('dictionary management methods (add, update, delete, clear, count, entries)', () => {
-        groqService.clearDictionary();
+    test('dictionary management methods (add, update, delete, clear, count, entries)', async () => {
+        await groqService.clearDictionary();
         expect(groqService.getDictionaryCount()).toBe(0);
         expect(groqService.getDictionaryEntries()).toEqual([]);
 
@@ -140,14 +144,14 @@ describe('groqService tests', () => {
         expect(updatedEntries[0].rawText).toBe('quiero ir cine papa');
 
         // Delete entry
-        const deleted = groqService.deleteDictionaryEntry(key);
+        const deleted = await groqService.deleteDictionaryEntry(key);
         expect(deleted).toBe(true);
         expect(groqService.getDictionaryCount()).toBe(0);
 
         // Clear dictionary
         groqService.addCustomDictionaryEntry('hola', 'Hola, buenos días.');
         expect(groqService.getDictionaryCount()).toBe(1);
-        groqService.clearDictionary();
+        await groqService.clearDictionary();
         expect(groqService.getDictionaryCount()).toBe(0);
     });
 
@@ -212,6 +216,23 @@ describe('groqService tests', () => {
 
         expect(groqService.analyzeConnectors(['quiero', 'agua'])).toBe('');
         expect(groqService.analyzeConnectors([])).toBe('');
+    });
+
+    test('recent phrases and dictionary are isolated per user', async () => {
+        groqService.clearRecentPhrases();
+        await groqService.clearDictionary();
+
+        groqService.addRecentPhrase('Hola mamá', 'hola mama');
+        groqService.addCustomDictionaryEntry('jugar patio', 'Quiero jugar en el patio.');
+
+        const recent = groqService.getRecentPhrases();
+        expect(recent.length).toBe(1);
+        expect(recent[0].text).toBe('Hola mamá');
+        expect(recent[0].userId).toBeDefined();
+
+        const entries = groqService.getDictionaryEntries();
+        expect(entries.length).toBe(1);
+        expect(entries[0].sentence).toBe('Quiero jugar en el patio.');
     });
 });
 

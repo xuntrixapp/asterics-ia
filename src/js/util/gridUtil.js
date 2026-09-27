@@ -203,7 +203,10 @@ gridUtil.generateGlobalGrid = function (locale, options) {
             authorURL: constants.ARASAAC_LICENSE_URL,
             url: 'https://api.arasaac.org/api/pictograms/39465?download=false&plural=false&color=true'
         }),
-        actions: [new GridActionSystem({ action: GridActionSystem.actions.SYS_TOGGLE_FULLSCREEN })]
+        actions: [
+            new GridActionSystem({ action: GridActionSystem.actions.SYS_LEAVE_FULLSCREEN }),
+            new GridActionSystem({ action: GridActionSystem.actions.SYS_ENTER_FULLSCREEN })
+        ]
     });
     let elementPlaceholder = new GridElement({
         type: GridElement.ELEMENT_TYPE_DYNAMIC_GRID_PLACEHOLDER,
@@ -256,7 +259,10 @@ gridUtil.ensureFullscreenButton = function (globalGrid) {
             authorURL: constants.ARASAAC_LICENSE_URL,
             url: 'https://api.arasaac.org/api/pictograms/39465?download=false&plural=false&color=true'
         }),
-        actions: [new GridActionSystem({ action: GridActionSystem.actions.SYS_TOGGLE_FULLSCREEN })]
+        actions: [
+            new GridActionSystem({ action: GridActionSystem.actions.SYS_LEAVE_FULLSCREEN }),
+            new GridActionSystem({ action: GridActionSystem.actions.SYS_ENTER_FULLSCREEN })
+        ]
     });
 
     globalGrid.gridElements.push(elementFullscreen);

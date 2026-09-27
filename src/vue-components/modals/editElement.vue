@@ -12,6 +12,7 @@
                     <div class="modal-body mt-2" v-if="gridElement">
                         <div v-if="currentTab === TABS.TAB_GENERAL">
                             <edit-element-general v-if="gridElement.type === GridElement.ELEMENT_TYPE_NORMAL || gridElement.type === GridElement.ELEMENT_TYPE_LIVE" :grid-element="gridElement" :grid-data="gridData" @searchImage="toImageSearch"></edit-element-general>
+                            <edit-element-comic-bubble v-if="gridElement.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE" :grid-element="gridElement" :grid-data="gridData"></edit-element-comic-bubble>
                             <edit-element-youtube v-if="gridElement.type === GridElement.ELEMENT_TYPE_YT_PLAYER" :grid-element="gridElement"></edit-element-youtube>
                             <edit-element-collect v-if="gridElement.type === GridElement.ELEMENT_TYPE_COLLECT" :grid-element="gridElement"></edit-element-collect>
                             <edit-element-matrix v-if="gridElement.type === GridElement.ELEMENT_TYPE_MATRIX_CONVERSATION" :grid-element="gridElement"></edit-element-matrix>
@@ -59,6 +60,7 @@
     import {util} from "../../js/util/util";
     import NavTabs from "../components/nav-tabs.vue";
     import EditElementGeneral from "./editElementGeneral.vue";
+    import EditElementComicBubble from "./editElementComicBubble.vue";
     import EditElementImage from "./editElementImage.vue";
     import EditElementActions from "./editElementActions.vue";
     import EditElementYoutube from "./editElementYoutube.vue";
@@ -85,7 +87,7 @@
             EditElementWordForms,
             EditElementHeader,
             EditElementCollect,
-            NavTabs, EditElementGeneral, EditElementImage, EditElementActions, EditElementYoutube
+            NavTabs, EditElementGeneral, EditElementComicBubble, EditElementImage, EditElementActions, EditElementYoutube
         },
         data: function () {
             return {
@@ -184,6 +186,8 @@
                     }
                     if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_NORMAL) {
                         this.possibleTabs = { TAB_GENERAL, TAB_IMAGE, TAB_WORDFORMS, TAB_ACTIONS };
+                    } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
+                        this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_YT_PLAYER) {
                         this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_COLLECT) {

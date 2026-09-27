@@ -87,6 +87,7 @@
     import {imageUtil} from "../../js/util/imageUtil";
     import {GridImage} from "../../js/model/GridImage";
     import {GridActionPredict} from "../../js/model/GridActionPredict";
+    import {GridActionSpeak} from "../../js/model/GridActionSpeak";
 
     let vueApp = null;
 
@@ -359,6 +360,28 @@
                         newElement.actions = [playAction, predictAction];
                     } else if (type === GridElement.ELEMENT_TYPE_LIVE) {
                         newElement = new GridElementLive(baseProperties);
+                        showEdit = true;
+                    } else if (type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
+                        let currentLang = i18nService.getContentLang() || 'es';
+                        newElement.type = GridElement.ELEMENT_TYPE_COMIC_BUBBLE;
+                        newElement.label = {};
+                        newElement.label[currentLang] = i18nService.t('comicBubbleDefaultText');
+                        newElement.actions = [new GridActionSpeak()];
+                        newElement.additionalProps = newElement.additionalProps || {};
+                        newElement.additionalProps.comicBubble = {
+                            bubbleType: 'speech',
+                            tailPosition: 'bottom-left',
+                            fillColor: '#ffffff',
+                            borderColor: '#111111',
+                            borderWidth: 3,
+                            cellBgColor: 'transparent',
+                            fontFamily: '"Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive, sans-serif',
+                            fontWeight: 'bold',
+                            fontStyle: 'normal',
+                            fontColor: '#111111',
+                            textAlign: 'center',
+                            comicShadow: true
+                        };
                         showEdit = true;
                     } else if (type === GridElement.ELEMENT_TYPE_MATRIX_CONVERSATION) {
                         newElement = new GridElementMatrixConversation(baseProperties);
@@ -806,6 +829,7 @@
         var CONTEXT_NEW_GROUP = "CONTEXT_NEW_GROUP";
         var CONTEXT_NEW_GROUP_REDUCED = "CONTEXT_NEW_GROUP_REDUCED";
         var CONTEXT_NEW_SINGLE = "CONTEXT_NEW_SINGLE";
+        var CONTEXT_NEW_COMIC_BUBBLE = "CONTEXT_NEW_COMIC_BUBBLE";
         var CONTEXT_NEW_MASS = "CONTEXT_NEW_MASS";
         var CONTEXT_NEW_COLLECT = "CONTEXT_NEW_COLLECT";
         var CONTEXT_NEW_PREDICT = "CONTEXT_NEW_PREDICT";
@@ -835,6 +859,7 @@
         let contextMenuNewGroup = {
             name: i18nService.t('new'), icon: "fas fa-plus-circle", items: {
                 'CONTEXT_NEW_SINGLE': {name: i18nService.t('newElement'), icon: "fas fa-plus"},
+                'CONTEXT_NEW_COMIC_BUBBLE': {name: i18nService.t('newComicBubble'), icon: "fas fa-comment-dots"},
                 'CONTEXT_NEW_MASS': {name: i18nService.t('manyNewElements'), icon: "fas fa-clone"},
                 'CONTEXT_NEW_CHILD_PLACEHOLDER': {
                     name: i18nService.t('newDynamicGridPlaceholder'),
@@ -987,6 +1012,10 @@
             switch (key) {
                 case CONTEXT_NEW_SINGLE: {
                     vueApp.newElement(GridElement.ELEMENT_TYPE_NORMAL, createdWithinGrid);
+                    break;
+                }
+                case CONTEXT_NEW_COMIC_BUBBLE: {
+                    vueApp.newElement(GridElement.ELEMENT_TYPE_COMIC_BUBBLE, createdWithinGrid);
                     break;
                 }
                 case CONTEXT_NEW_MASS: {

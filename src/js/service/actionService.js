@@ -45,15 +45,30 @@ let minActionPauseMs = 0;
 let metadata = null;
 let lastActionElementId = null;
 let lastActionTime = 0;
+let lastNavigationTime = 0;
+
+$(document).on(constants.EVENT_NAVIGATE, () => {
+    lastNavigationTime = new Date().getTime();
+});
+$(document).on(constants.EVENT_NAVIGATE_GRID_IN_VIEWMODE, () => {
+    lastNavigationTime = new Date().getTime();
+});
 
 actionService.doAction = async function (gridIdOrObject, gridElementId) {
     if (!gridIdOrObject || !gridElementId) {
         return;
     }
-    if (minActionPauseMs && lastActionElementId === gridElementId && new Date().getTime() - lastActionTime < minActionPauseMs) {
+    let now = new Date().getTime();
+    if (now - lastNavigationTime < 350) {
+        log.debug('doAction omitido: demasiado pronto tras navegación (' + (now - lastNavigationTime) + 'ms)');
         return;
     }
-    lastActionTime = new Date().getTime();
+    let minPause = Math.max(minActionPauseMs || 0, 180);
+    if (now - lastActionTime < minPause) {
+        log.debug('doAction omitido: cooldown de acción (' + (now - lastActionTime) + 'ms)');
+        return;
+    }
+    lastActionTime = now;
     lastActionElementId = gridElementId;
     let gridData = gridIdOrObject.gridElements ? gridIdOrObject : (await dataService.getGrid(gridIdOrObject, false, true));
     let gridElement = JSON.parse(JSON.stringify(gridData.gridElements.find(e => e.id === gridElementId)));
@@ -221,6 +236,7 @@ async function doAction(gridElement, action, options = {}) {
             }
             break;
         case 'GridActionNavigate':
+            lastNavigationTime = new Date().getTime();
             if (action.navType === GridActionNavigate.NAV_TYPES.TO_HOME) {
                 Router.toMain();
             } else if (action.navType === GridActionNavigate.NAV_TYPES.TO_LAST) {

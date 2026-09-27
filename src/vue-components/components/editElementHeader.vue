@@ -11,10 +11,10 @@
             <div class="col-12 col-md-5 d-flex align-items-center order-md-2 mt-2 mt-md-0" v-if="gridElement">
                 <div v-if="gridElement.type === GridElement.ELEMENT_TYPE_NORMAL">
                     <img class="me-1" v-if="gridElement.image && (gridElement.image.data || gridElement.image.url)" height="30" :src="gridElement.image.data || gridElement.image.url"/>
-                    <span>{{ gridElement.label | extractTranslation }}</span>
+                    <span class="header-elem-title">{{ gridElement.label | extractTranslation }}</span>
                 </div>
                 <div v-if="gridElement.type !== GridElement.ELEMENT_TYPE_NORMAL">
-                    <span class="mx-2">{{ gridElement.type | translate }}</span>
+                    <span class="header-elem-title">{{ gridElement.type | translate }}</span>
                 </div>
             </div>
         </div>
@@ -40,4 +40,14 @@
 </script>
 
 <style scoped>
+.header-elem-title {
+    font-size: 1.15em;
+    font-weight: bold;
+    color: #2d7bb4;
+    padding: 2px 10px;
+    background-color: #f0f4f8;
+    border-radius: 4px;
+    border: 1px solid #d0dce5;
+    display: inline-block;
+}
 </style>

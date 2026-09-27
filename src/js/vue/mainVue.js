@@ -206,7 +206,7 @@ MainVue.init = function () {
                         return;
                     }
                     dataService.getMetadata().then((metadata) => {
-                        if (!metadata.locked && !metadata.fullscreen) {
+                        if (!metadata || !metadata.locked) {
                             thiz.showSidebar = true;
                             this.$nextTick(() => {
                                 $(document).trigger(constants.EVENT_SIDEBAR_OPENED);

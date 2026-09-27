@@ -28,7 +28,7 @@ let _lastParamHashedPw = null;
 let _lastParamSaveUser = null;
 let _serverUrl = (constants.IS_ENVIRONMENT_PROD || constants.FORCE_CONNECT_DB)
     ? 'https://login1.couchdb.asterics-foundation.org'
-    : `http://${location.hostname}:3000`;
+    : 'https://login1.couchdb.asterics-foundation.org';
 loginService.ERROR_CODE_UNAUTHORIZED = 'ERROR_CODE_UNAUTHORIZED';
 
 loginService.ERROR_CODE_LOCKED = 'ERROR_CODE_LOCKED';
@@ -363,14 +363,14 @@ function reasonToErrorCode(reason) {
     ) {
         return loginService.ERROR_CODE_UNAUTHORIZED;
     }
-    if (reason && reason.error && typeof reason.error === 'string' && reason.error.toLowerCase() === 'unauthorized') {
+    if (reason && ((reason.error && (reason.error.toLowerCase() === 'unauthorized' || reason.error.toLowerCase() === 'bad request')) || reason.status === 400 || reason.status === 401 || reason.status === 403)) {
         return loginService.ERROR_CODE_UNAUTHORIZED;
     }
     let msg = (reason && (reason.message || (typeof reason === 'string' ? reason : '')) || '').toLowerCase();
     if (msg.includes('network') || msg.includes('fetch')) {
         return loginService.ERROR_CODE_NETWORK_ERROR;
     }
-    return loginService.ERROR_CODE_NETWORK_ERROR;
+    return loginService.ERROR_CODE_UNAUTHORIZED;
 }
 
 function autoRetryLogin(user, hashedPassword, saveUser) {
@@ -394,8 +394,7 @@ function getConfig() {
         // Specific endpoint for social authentication and social link popups (defaults to `${location.origin}${baseUrl}`)
         //socialUrl: 'http://' + location.hostname + ':3001/auth',
         // A list of API endpoints to automatically add the Authorization header to
-        // By default the host the browser is pointed to will be added automatically
-        //endpoints: ['api.example.com'],
+        endpoints: ['login1.couchdb.asterics-foundation.org', 'db2.couchdb.asterics-foundation.org', 'db1.couchdb.asterics-foundation.org', 'couchdb.asterics-foundation.org'],
         // Set this to true if you do not want the URL bar host automatically added to the list
         noDefaultEndpoint: false,
         // Where to save your session token: localStorage ('local') or sessionStorage ('session'), default: 'local'
