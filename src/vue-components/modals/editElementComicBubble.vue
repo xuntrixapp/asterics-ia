@@ -300,7 +300,44 @@ export default {
             this.chosenLocale = langs.find(lang => lang !== this.currentLang) || 'en';
         }
     },
+    created() {
+        if (!this.gridElement) return;
+        if (!this.gridElement.label || typeof this.gridElement.label !== 'object') {
+            this.$set(this.gridElement, 'label', {});
+        }
+        if (!this.gridElement.pronunciation || typeof this.gridElement.pronunciation !== 'object') {
+            this.$set(this.gridElement, 'pronunciation', {});
+        }
+        if (!this.gridElement.additionalProps) {
+            this.$set(this.gridElement, 'additionalProps', {});
+        }
+        if (!this.gridElement.additionalProps.comicBubble) {
+            this.$set(this.gridElement.additionalProps, 'comicBubble', {
+                bubbleType: 'speech',
+                tailPosition: 'bottom-left',
+                text: '',
+                fontFamily: '"Comic Neue", "Comic Sans MS", "Chalkboard SE", cursive, sans-serif',
+                fontSizePct: 100,
+                fontColor: '#111111',
+                fontWeight: 'bold',
+                fontStyle: 'normal',
+                textAlign: 'center',
+                borderColor: '#111111',
+                borderWidth: 3,
+                fillColor: '#ffffff',
+                cellBgColor: 'transparent',
+                comicShadow: true
+            });
+        }
+    },
     mounted() {
+        if (!this.gridElement) return;
+        if (!this.gridElement.label || typeof this.gridElement.label !== 'object') {
+            this.$set(this.gridElement, 'label', {});
+        }
+        if (!this.gridElement.pronunciation || typeof this.gridElement.pronunciation !== 'object') {
+            this.$set(this.gridElement, 'pronunciation', {});
+        }
         if (!this.gridElement.label[this.currentLang] && this.bubbleProps.text) {
             this.$set(this.gridElement.label, this.currentLang, this.bubbleProps.text);
         }

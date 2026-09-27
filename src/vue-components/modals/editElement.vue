@@ -185,19 +185,19 @@
                         thiz.gridData.gridElements.push(thiz.gridElement);
                     }
                     if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_NORMAL) {
-                        this.possibleTabs = { TAB_GENERAL, TAB_IMAGE, TAB_WORDFORMS, TAB_ACTIONS };
+                        thiz.possibleTabs = { TAB_GENERAL, TAB_IMAGE, TAB_WORDFORMS, TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
-                        this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_YT_PLAYER) {
-                        this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_COLLECT) {
-                        this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_PREDICTION) {
-                        this.possibleTabs = { TAB_ACTIONS };
+                        thiz.possibleTabs = { TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_LIVE) {
-                        this.possibleTabs = { TAB_GENERAL, TAB_LIVE_DATA, TAB_IMAGE, TAB_ACTIONS };
+                        thiz.possibleTabs = { TAB_GENERAL, TAB_LIVE_DATA, TAB_IMAGE, TAB_ACTIONS };
                     } else if (thiz.gridElement.type === GridElement.ELEMENT_TYPE_MATRIX_CONVERSATION) {
-                        this.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
+                        thiz.possibleTabs = { TAB_GENERAL, TAB_ACTIONS };
                     }
                     thiz.originalGridElement = JSON.parse(JSON.stringify(thiz.gridElement));
                 });

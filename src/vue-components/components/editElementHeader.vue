@@ -14,7 +14,7 @@
                     <span class="header-elem-title">{{ gridElement.label | extractTranslation }}</span>
                 </div>
                 <div v-if="gridElement.type !== GridElement.ELEMENT_TYPE_NORMAL">
-                    <span class="header-elem-title">{{ gridElement.type | translate }}</span>
+                    <span class="header-elem-title">{{ getElementTypeName(gridElement.type) }}</span>
                 </div>
             </div>
         </div>
@@ -24,6 +24,7 @@
 <script>
 
     import {GridElement} from "../../js/model/GridElement.js";
+    import {i18nService} from "../../js/service/i18nService.js";
 
     export default {
         props: ["header", "gridElement", "openHelpFn", "closeFn"],
@@ -33,6 +34,12 @@
             }
         },
         methods: {
+            getElementTypeName(type) {
+                if (type === GridElement.ELEMENT_TYPE_COMIC_BUBBLE) {
+                    return i18nService.t('newComicBubble') || 'Bocadillo de cómic';
+                }
+                return i18nService.te(type) ? i18nService.t(type) : (i18nService.te(`ELEMENT_TYPE_${type}`) ? i18nService.t(`ELEMENT_TYPE_${type}`) : type);
+            }
         },
         mounted() {
         },
