@@ -30,16 +30,19 @@
     </div>
 </template>
 
-<script>
 import { i18nService } from '../../../js/service/i18nService';
+import { stateService } from '../../../js/service/stateService';
+import { constants } from '../../../js/util/constants';
+import $ from '../../../js/externals/jquery';
 
 export default {
     name: 'GridElementComicBubble',
-    props: ['gridElement', 'metadata', 'containerSize'],
+    props: ['gridElement', 'metadata', 'containerSize', 'editable', 'watchForChanges'],
     data() {
         return {
             autoFontSizePx: null,
-            resizeObserver: null
+            resizeObserver: null,
+            externalSetLabel: ''
         };
     },
     computed: {
@@ -91,6 +94,10 @@ export default {
         },
         displayContent() {
             if (!this.gridElement) return '';
+            let dynamicText = (this.externalSetLabel + '') || (this.gridElement.id ? stateService.getDisplayText(this.gridElement.id) : '');
+            if (dynamicText && typeof dynamicText === 'string' && dynamicText.trim()) {
+                return dynamicText;
+            }
             let label = this.gridElement.label;
             if (label) {
                 let text = i18nService.getTranslation(label);
@@ -121,29 +128,37 @@ export default {
             let padRight = 10;
 
             if (this.tailPosition === 'bottom-left' || this.tailPosition === 'bottom-center' || this.tailPosition === 'bottom-right') {
-                padBottom = 22;
-                padTop = 8;
+                padBottom = 24;
+                padTop = 10;
+                padLeft = 12;
+                padRight = 12;
             } else if (this.tailPosition === 'top-left' || this.tailPosition === 'top-right') {
-                padTop = 22;
-                padBottom = 8;
+                padTop = 24;
+                padBottom = 10;
+                padLeft = 12;
+                padRight = 12;
             } else if (this.tailPosition === 'left') {
-                padLeft = 20;
-                padRight = 10;
+                padLeft = 24;
+                padRight = 12;
+                padTop = 10;
+                padBottom = 10;
             } else if (this.tailPosition === 'right') {
-                padRight = 20;
-                padLeft = 10;
+                padRight = 24;
+                padLeft = 12;
+                padTop = 10;
+                padBottom = 10;
             }
 
             if (this.bubbleType === 'shout') {
-                padTop = 18;
-                padBottom = 18;
-                padLeft = 18;
-                padRight = 18;
-            } else if (this.bubbleType === 'thought') {
-                padTop = 14;
+                padTop = 22;
                 padBottom = 22;
-                padLeft = 14;
-                padRight = 14;
+                padLeft = 22;
+                padRight = 22;
+            } else if (this.bubbleType === 'thought') {
+                padTop = 16;
+                padBottom = 26;
+                padLeft = 16;
+                padRight = 16;
             } else if (this.bubbleType === 'box') {
                 padTop = 10;
                 padBottom = 10;
@@ -167,13 +182,14 @@ export default {
                 pointerEvents: 'none',
                 zIndex: 2,
                 overflow: 'hidden',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                padding: '2px 4px'
             };
         },
         textStyle() {
             let fontSizeStr = this.autoFontSizePx
                 ? `${this.autoFontSizePx}px`
-                : `clamp(0.75rem, ${(1.2 * (this.fontSizePct / 100)).toFixed(2)}rem, 2.5rem)`;
+                : `clamp(0.6rem, ${(1.2 * (this.fontSizePct / 100)).toFixed(2)}rem, 2.5rem)`;
 
             return {
                 fontFamily: this.fontFamily,
@@ -181,10 +197,13 @@ export default {
                 color: this.fontColor,
                 fontWeight: this.fontWeight,
                 fontStyle: this.fontStyle,
-                lineHeight: 1.25,
+                lineHeight: 1.18,
                 textAlign: this.textAlign || 'center',
                 width: '100%',
+                maxHeight: '100%',
                 wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                hyphens: 'auto',
                 whiteSpace: 'pre-line',
                 display: 'block'
             };
@@ -384,17 +403,23 @@ export default {
                     return;
                 }
 
-                let container = this.$refs.textContainer;
                 let width = 0;
                 let height = 0;
 
-                if (container && container.clientWidth && container.clientHeight) {
+                let wrapper = this.$refs.wrapper;
+                let container = this.$refs.textContainer;
+
+                let { padTop, padBottom, padLeft, padRight } = this.paddingPercentages;
+                let padH = (padLeft + padRight) / 100;
+                let padV = (padTop + padBottom) / 100;
+
+                if (wrapper && wrapper.clientWidth && wrapper.clientHeight) {
+                    width = wrapper.clientWidth * (1 - padH);
+                    height = wrapper.clientHeight * (1 - padV);
+                } else if (container && container.clientWidth && container.clientHeight) {
                     width = container.clientWidth;
                     height = container.clientHeight;
                 } else if (this.containerSize && this.containerSize.width && this.containerSize.height) {
-                    let { padTop, padBottom, padLeft, padRight } = this.paddingPercentages;
-                    let padH = (padLeft + padRight) / 100;
-                    let padV = (padTop + padBottom) / 100;
                     width = this.containerSize.width * (1 - padH);
                     height = this.containerSize.height * (1 - padV);
                 }
@@ -403,14 +428,14 @@ export default {
                     return;
                 }
 
-                let availWidth = Math.max(10, width - 8);
-                let availHeight = Math.max(10, height - 6);
+                let availWidth = Math.max(8, width - 8);
+                let availHeight = Math.max(8, height - 6);
 
                 let canvas = document.createElement('canvas');
                 let ctx = canvas.getContext('2d');
 
-                let minSize = 10;
-                let maxSize = Math.max(minSize, Math.min(Math.floor(availHeight * 0.85), Math.floor(availWidth * 0.9), 120));
+                let minSize = 6;
+                let maxSize = Math.max(minSize, Math.min(Math.floor(availHeight * 0.95), Math.floor(availWidth * 0.95), 140));
 
                 let low = minSize;
                 let high = maxSize;
@@ -420,8 +445,7 @@ export default {
                     let mid = Math.floor((low + high) / 2);
                     ctx.font = `${this.fontStyle} ${this.fontWeight} ${mid}px ${this.fontFamily}`;
 
-                    let fits = true;
-                    let rawLines = text.split('\n');
+                    let rawLines = text.split(/\r?\n/);
                     let totalLines = 0;
 
                     for (let rLine of rawLines) {
@@ -431,24 +455,31 @@ export default {
                             continue;
                         }
 
-                        // Check if any single word is too wide
-                        for (let word of words) {
-                            if (ctx.measureText(word).width > availWidth) {
-                                fits = false;
-                                break;
-                            }
-                        }
-                        if (!fits) break;
-
-                        // Simulate word wrap
                         let curLine = '';
                         for (let w of words) {
                             let testLine = curLine ? (curLine + ' ' + w) : w;
-                            if (ctx.measureText(testLine).width > availWidth) {
-                                totalLines++;
-                                curLine = w;
-                            } else {
+                            if (ctx.measureText(testLine).width <= availWidth) {
                                 curLine = testLine;
+                            } else {
+                                if (curLine) {
+                                    totalLines++;
+                                    curLine = '';
+                                }
+                                if (ctx.measureText(w).width > availWidth) {
+                                    let subWord = '';
+                                    for (let ch of w) {
+                                        let testSub = subWord + ch;
+                                        if (ctx.measureText(testSub).width <= availWidth) {
+                                            subWord = testSub;
+                                        } else {
+                                            totalLines++;
+                                            subWord = ch;
+                                        }
+                                    }
+                                    curLine = subWord;
+                                } else {
+                                    curLine = w;
+                                }
                             }
                         }
                         if (curLine) {
@@ -456,32 +487,49 @@ export default {
                         }
                     }
 
-                    let lineHeight = mid * 1.25;
-                    if (fits && (totalLines * lineHeight <= availHeight)) {
+                    let lineHeight = mid * 1.18;
+                    if (totalLines * lineHeight <= availHeight) {
                         bestFitting = mid;
-                        low = mid + 1; // Can be larger
+                        low = mid + 1;
                     } else {
-                        high = mid - 1; // Must be smaller
+                        high = mid - 1;
                     }
                 }
 
-                let finalSize = Math.max(10, Math.round(bestFitting * (this.fontSizePct / 100)));
+                let finalSize = Math.max(6, Math.round(bestFitting * (this.fontSizePct / 100)));
                 if (this.autoFontSizePx !== finalSize) {
                     this.autoFontSizePx = finalSize;
                 }
             });
+        },
+        externalUpdateFn(event, id, text) {
+            if (this.gridElement && id === this.gridElement.id) {
+                this.externalSetLabel = text;
+                this.calcFontSize();
+            }
         }
     },
     mounted() {
         this.calcFontSize();
+        if (this.gridElement && this.gridElement.id) {
+            $(document).on(`${constants.EVENT_ELEM_TEXT_CHANGED}.${this.gridElement.id}`, this.externalUpdateFn);
+        }
         if (window.ResizeObserver && this.$refs.wrapper) {
             this.resizeObserver = new ResizeObserver(() => {
                 this.calcFontSize();
             });
             this.resizeObserver.observe(this.$refs.wrapper);
         }
+        if (this.editable || this.watchForChanges) {
+            this.$watch('gridElement', () => {
+                this.calcFontSize();
+            }, { deep: true });
+        }
     },
     beforeDestroy() {
+        if (this.gridElement && this.gridElement.id) {
+            $(document).off(`${constants.EVENT_ELEM_TEXT_CHANGED}.${this.gridElement.id}`);
+        }
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
             this.resizeObserver = null;
