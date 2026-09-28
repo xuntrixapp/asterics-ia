@@ -23,7 +23,7 @@ class GridElementCollect extends GridElement.extend({
         props.textElemSizeFactor = 1.5;
         props.displayUpsideDown = props.displayUpsideDown !== undefined ? props.displayUpsideDown : false;
         props.actions = props.actions || [
-            new GridActionCollectElement({ action: GridActionCollectElement.COLLECT_ACTION_SPEAK_CONTINUOUS }),
+            new GridActionCollectElement({ action: GridActionCollectElement.COLLECT_ACTION_SPEAK }),
             new GridActionPredict({ suggestOnChange: true, dictionaryKey: GridActionPredict.USE_DICTIONARY_CURRENT_LANG })
         ];
         super(props);

@@ -10,15 +10,11 @@
                 <i class="fas fa-plus"></i>
                 <span class="hide-mobile">{{ $t('newElement') }}</span>
             </button>
-            <button tabindex="32" @click="newElement(GridElement.ELEMENT_TYPE_COMIC_BUBBLE)" :aria-label="$t('newComicBubble')" class="spaced small" :title="$t('newComicBubble')">
-                <i class="fas fa-comment-dots"></i>
-                <span class="hide-mobile">{{ $t('newComicBubble') }}</span>
-            </button>
-            <button tabindex="33" id="moreButton" :aria-label="$t('more')" class="spaced"><i class="fas fa-ellipsis-v"></i> <span class="hide-mobile">{{ $t('more') }}</span></button>
+            <button tabindex="32" id="moreButton" :aria-label="$t('more')" class="spaced"><i class="fas fa-ellipsis-v"></i> <span class="hide-mobile">{{ $t('more') }}</span></button>
             <div id="moreButtonMenu"></div>
             <div class="spaced btn-group">
-                <button tabindex="34" @click="undo" :aria-label="$t('undo')" :disabled="doingUndoRedo|| !undoService.canUndo()" class="small"><i class="fas fa-undo"></i> <span class="hide-mobile">{{ $t('undo') }}</span></button>
-                <button tabindex="35" @click="redo"  :aria-label="$t('redo')" :disabled="doingUndoRedo || !undoService.canRedo()" class="small spaced"><i class="fas fa-redo"></i> <span class="hide-mobile">{{ $t('redo') }}</span></button>
+                <button tabindex="33" @click="undo" :aria-label="$t('undo')" :disabled="doingUndoRedo|| !undoService.canUndo()" class="small"><i class="fas fa-undo"></i> <span class="hide-mobile">{{ $t('undo') }}</span></button>
+                <button tabindex="34" @click="redo"  :aria-label="$t('redo')" :disabled="doingUndoRedo || !undoService.canRedo()" class="small spaced"><i class="fas fa-redo"></i> <span class="hide-mobile">{{ $t('redo') }}</span></button>
             </div>
         </header>
         <header class="d-flex align-items-center transfer-props-header" role="toolbar" v-if="propTransferObject">

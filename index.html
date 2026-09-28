@@ -38,9 +38,6 @@
     <message-box v-show="showModal === modalTypes.MODAL_MESSAGEBOX" ref="messageBox" @close="showModal = null"></message-box>
     <div class="grid-container grid-mask" v-if="false">
         <i class="fas fa-4x fa-spinner fa-spin" style="top: 40%;"></i>
-        <div style="position: fixed; top: 50%; width: 100%; text-align: center; font-size: 2em;">
-            <span>loading...</span>
-        </div>
     </div>
     <div class="holy-grail-body" v-cloak>
         <div class="holy-grail-sidebar-1 hg-sidebar no-print" v-show="showSidebar">

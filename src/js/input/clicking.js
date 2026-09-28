@@ -21,12 +21,14 @@ function ClickerConstructor(itemSelector, options) {
 
     function onclick(event) {
         let now = new Date().getTime();
-        if (now - globalLastOnClick < 350) {
+        if (now - globalLastOnClick < 60) {
             return;
         }
         globalLastOnClick = now;
         if (typeof window !== 'undefined' && window.AndroidNative && window.AndroidNative.reportUserInteraction) {
-            try { window.AndroidNative.reportUserInteraction(); } catch (e) {}
+            setTimeout(() => {
+                try { window.AndroidNative.reportUserInteraction(); } catch (e) {}
+            }, 0);
         }
         if (_selectionListener) {
             _selectionListener(event.currentTarget);

@@ -116,16 +116,19 @@ collectElementService.doCollectElementActions = async function (action, gridElem
 
     let isCollectBar = gridElement && gridElement.type === GridElement.ELEMENT_TYPE_COLLECT;
 
-    // Si la interacción es sobre la Frase acumulada, ejecutar proceso 100% original del PWA
+    // Si la interacción es sobre la Frase acumulada, ejecutar proceso original del PWA (mencionando picto por picto e iluminando en verde)
     if (isCollectBar) {
         if (GridActionCollectElement.isSpeakAction(action)) {
             await collectElementService.doARASAACGrammarCorrection();
         }
         let speakText = getPrintText({ dontIncludePronunciation: false });
         let speakArray = getSpeakArray();
+        let shouldSpeakSeparated = isSeparateMode(collectMode) && speakArray && speakArray.length > 0;
+
         switch (action) {
             case GridActionCollectElement.COLLECT_ACTION_SPEAK:
-                if (isSeparateMode(collectMode)) {
+            case GridActionCollectElement.COLLECT_ACTION_SPEAK_CONTINUOUS:
+                if (shouldSpeakSeparated) {
                     speechService.speakArray(speakArray, (index) => {
                         markedImageIndex = index;
                         updateCollectElements();
@@ -134,16 +137,9 @@ collectElementService.doCollectElementActions = async function (action, gridElem
                     speechService.speak(speakText);
                 }
                 break;
-            case GridActionCollectElement.COLLECT_ACTION_SPEAK_CONTINUOUS:
-                speechService.speak(speakText);
-                break;
-            case GridActionCollectElement.COLLECT_ACTION_SPEAK_CONTINUOUS_CLEAR:
-                speechService.speak(speakText);
-                await speechService.waitForFinishedSpeaking();
-                clearAll();
-                break;
             case GridActionCollectElement.COLLECT_ACTION_SPEAK_CLEAR:
-                if (isSeparateMode(collectMode)) {
+            case GridActionCollectElement.COLLECT_ACTION_SPEAK_CONTINUOUS_CLEAR:
+                if (shouldSpeakSeparated) {
                     speechService.speakArray(speakArray, (index, finished) => {
                         markedImageIndex = index;
                         updateCollectElements();
@@ -597,7 +593,7 @@ function isSeparateMode(collectElementMode) {
         case GridElementCollect.MODE_COLLECT_TEXT:
             return false;
     }
-    return autoCollectImage;
+    return autoCollectImage || collectedElements.length > 0;
 }
 
 function getLastElement() {

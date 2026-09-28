@@ -224,9 +224,11 @@ speechService.speakArray = async function (array, progressFn) {
         if (object.text) {
             speechService.speak(object.text, {dontStop: true});
             await speechService.waitForFinishedSpeaking();
+            await util.sleep(90);
         } else if (object.base64Sound) {
             await audioUtil.playAudio(object.base64Sound);
             await audioUtil.waitForAudioEnded();
+            await util.sleep(90);
         }
     }
     if (localRunId === _speakArrayRunId || _speakArrayRunId === null) {
