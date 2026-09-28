@@ -708,10 +708,21 @@ function addTextElem(text) {
     collectedElements.push(newElem);
 }
 
+let lastCollectedElementKey = null;
+let lastCollectedTimestamp = 0;
+
 $(window).on(constants.ELEMENT_EVENT_ID, function (event, element) {
-    if (element.type === GridElement.ELEMENT_TYPE_COLLECT) {
+    if (!element || element.type === GridElement.ELEMENT_TYPE_COLLECT) {
         return;
     }
+
+    let now = Date.now();
+    let elemKey = element.id || (element.label && element.label.text) || JSON.stringify(element.label);
+    if (elemKey && elemKey === lastCollectedElementKey && (now - lastCollectedTimestamp < 350)) {
+        return;
+    }
+    lastCollectedElementKey = elemKey;
+    lastCollectedTimestamp = now;
 
     let notIgonoreActions = [
         GridActionSpeak.getModelName(),

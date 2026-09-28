@@ -197,22 +197,10 @@ MainVue.init = function () {
                     if (thiz.showSidebar) {
                         return;
                     }
-                    if (!databaseService.getCurrentUsedDatabase()) {
-                        thiz.showSidebar = true;
-                        this.$nextTick(() => {
-                            $(document).trigger(constants.EVENT_SIDEBAR_OPENED);
-                            $(document).trigger(constants.EVENT_GRID_RESIZE);
-                        });
-                        return;
-                    }
-                    dataService.getMetadata().then((metadata) => {
-                        if (!metadata || !metadata.locked) {
-                            thiz.showSidebar = true;
-                            this.$nextTick(() => {
-                                $(document).trigger(constants.EVENT_SIDEBAR_OPENED);
-                                $(document).trigger(constants.EVENT_GRID_RESIZE);
-                            });
-                        }
+                    thiz.showSidebar = true;
+                    this.$nextTick(() => {
+                        $(document).trigger(constants.EVENT_SIDEBAR_OPENED);
+                        $(document).trigger(constants.EVENT_GRID_RESIZE);
                     });
                 });
                 $(document).on(constants.EVENT_SIDEBAR_CLOSE, () => {

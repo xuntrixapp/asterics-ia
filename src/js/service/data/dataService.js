@@ -319,9 +319,14 @@ dataService.getMetadata = function () {
                     returnValue.lastOpenedGridId = localMetadata.lastOpenedGridId;
                 }
             }
-            let storedLocked = localStorageService.get('AG_APP_LOCKED');
-            if (storedLocked !== null && storedLocked !== undefined) {
-                returnValue.locked = storedLocked === 'true';
+            let appSettings = localStorageService.getAppSettings() || {};
+            if (appSettings.autoLockOnStartup) {
+                returnValue.locked = true;
+            } else {
+                let storedLocked = localStorageService.get('AG_APP_LOCKED');
+                if (storedLocked !== null && storedLocked !== undefined) {
+                    returnValue.locked = storedLocked === 'true';
+                }
             }
             resolve(new MetaData(returnValue));
         });

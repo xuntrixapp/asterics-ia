@@ -1,37 +1,26 @@
 <template>
     <div class="box" id="gridView" v-cloak>
-        <header class="srow header" role="toolbar" v-if="metadata" v-show="!metadata.fullscreen">
-            <header-icon class="left" v-show="!metadata.locked"></header-icon>
-            <div class="btn-group left" v-show="!metadata.locked">
-                <button tabindex="30" @click="toEditGrid()" class="spaced small" :aria-label="$t('editingOn')"><i class="fas fa-pencil-alt"/> <span class="hide-mobile">{{ $t('editingOn') }}</span></button>
-                <button tabindex="31" id="inputConfigButton" @click="openInputConfigMenu($event)" class="small" :aria-label="$t('inputOptions')"><i class="fas fa-cog"></i> <span class="hide-mobile">{{ $t('inputOptions') }}</span></button>
+        <header class="srow header grid-top-header" role="toolbar" v-if="metadata" v-show="!metadata.fullscreen">
+            <div class="header-left-group">
+                <header-icon v-if="!metadata.locked"></header-icon>
+                <button v-if="!metadata.locked" tabindex="30" @click="toEditGrid()" class="small" :aria-label="$t('editingOn')"><i class="fas fa-pencil-alt"/> <span class="hide-mobile">{{ $t('editingOn') }}</span></button>
+                <button v-if="!metadata.locked" tabindex="31" id="inputConfigButton" @click="openInputConfigMenu($event)" class="small" :aria-label="$t('inputOptions')"><i class="fas fa-cog"></i> <span class="hide-mobile">{{ $t('inputOptions') }}</span></button>
                 <div id="inputConfigMenu"></div>
             </div>
-            <button tabindex="34" v-show="metadata.locked" @click="unlock()" class="small" :aria-label="$t('unlock')">
-                <i class="fas fa-unlock"></i>
-                <span class="hide-mobile">{{ $t('unlock') }}</span>
-                <span v-if="unlockCounter !== unlockCount">{{unlockCounter}}</span>
-            </button>
-            <button tabindex="34" v-show="!metadata.locked" @click="MainVue.showSearchModal()" class="spaced small" :aria-label="$t('fullscreen')" :title="$t('searchBtnTitle')"><i class="fas fa-search"/> <span class="hide-mobile">{{ $t('search') }}</span></button>
-            <button tabindex="33" v-show="!metadata.locked" @click="lock()" class="small" :aria-label="$t('lock')">
-                <i class="fas fa-lock"></i>
-                <span class="hide-mobile">{{ $t('lock') }}</span>
-            </button>
-            <button tabindex="35" v-if="isGroqActive" @click="openModal(modalTypes.MODAL_GROQ_RECENT)" class="small spaced" :title="groqStatusTooltip" :aria-label="$t('groqRecentPhrases')" style="display: inline-flex; align-items: center; justify-content: center;">
-                <span class="groq-status-dot" :class="'groq-status-' + groqStatus"></span>
-                <i class="fas fa-history"></i>
-            </button>
-            <button tabindex="32" @click="systemActionService.toggleFullscreen()" class="spaced small" :aria-label="metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN')" :title="metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN')"><i :class="metadata && metadata.fullscreen ? 'fas fa-compress' : 'fas fa-expand'"/> <span class="hide-mobile">{{ metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN') }}</span></button>
+            <div class="header-right-group">
+                <button tabindex="34" v-if="!metadata.locked" @click="MainVue.showSearchModal()" class="small" :aria-label="$t('search')" :title="$t('searchBtnTitle')"><i class="fas fa-search"/> <span class="hide-mobile">{{ $t('search') }}</span></button>
+                <button tabindex="33" @click="toggleLock()" class="small" :aria-label="metadata.locked ? $t('unlock') : $t('lock')" :title="metadata.locked ? $t('unlock') : $t('lock')">
+                    <i :class="metadata.locked ? 'fas fa-unlock' : 'fas fa-lock'"></i>
+                    <span class="hide-mobile">{{ metadata.locked ? $t('unlock') : $t('lock') }}</span>
+                    <span v-if="metadata.locked && unlockCounter !== unlockCount">{{unlockCounter}}</span>
+                </button>
+                <button tabindex="35" v-if="isGroqActive" @click="openModal(modalTypes.MODAL_GROQ_RECENT)" class="small" :title="groqStatusTooltip" :aria-label="$t('groqRecentPhrases')" style="display: inline-flex; align-items: center; justify-content: center;">
+                    <span class="groq-status-dot" :class="'groq-status-' + groqStatus"></span>
+                    <i class="fas fa-history"></i>
+                </button>
+                <button tabindex="32" @click="systemActionService.toggleFullscreen()" class="small btn-fullscreen-toggle" :aria-label="metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN')" :title="metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN')"><i :class="metadata && metadata.fullscreen ? 'fas fa-compress' : 'fas fa-expand'"/> <span class="hide-mobile">{{ metadata && metadata.fullscreen ? $t('SYS_LEAVE_FULLSCREEN') : $t('SYS_ENTER_FULLSCREEN') }}</span></button>
+            </div>
         </header>
-
-        <!-- Botón flotante para salir de pantalla completa si la barra superior está oculta -->
-        <button v-if="metadata && metadata.fullscreen"
-                @click="systemActionService.exitFullscreen()"
-                class="floating-fullscreen-exit-btn"
-                :aria-label="$t('SYS_LEAVE_FULLSCREEN')"
-                :title="$t('SYS_LEAVE_FULLSCREEN')">
-            <i class="fas fa-compress"></i>
-        </button>
 
         <div class="srow content text-content" v-show="!renderGridData">
             <div class="grid-container grid-mask">
@@ -223,6 +212,13 @@
                 this.showModal = modalType;
                 stopInputMethods();
             },
+            toggleLock() {
+                if (this.metadata && this.metadata.locked) {
+                    this.unlock();
+                } else {
+                    this.lock();
+                }
+            },
             lock() {
                 let thiz = this;
                 thiz.metadata.locked = true;
@@ -242,7 +238,7 @@
                 util.debounce(function () {
                     thiz.unlockCounter = UNLOCK_COUNT;
                 }, 3000);
-                if (thiz.unlockCounter === 0 || force) {
+                if (thiz.unlockCounter <= 0 || force) {
                     thiz.metadata.locked = false;
                     thiz.metadata.fullscreen = false;
                     thiz.unlockCounter = UNLOCK_COUNT;
@@ -280,12 +276,17 @@
                 let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
                 let pinApp = !!appSettings.pinAppOnLock;
 
-                // 1. Establecer el estado de bloqueo si está activo en configuración o metadata
-                if (autoLock || this.metadata.locked) {
+                // 1. Establecer el estado de bloqueo únicamente si está activo autoLock en configuración
+                if (autoLock || urlParamService.isLocked(false)) {
                     this.metadata.locked = true;
                     this.unlockCounter = UNLOCK_COUNT;
                     localStorageService.save('AG_APP_LOCKED', 'true');
                     this.setViewPropsLocked();
+                    dataService.saveMetadata(this.metadata);
+                } else {
+                    this.metadata.locked = false;
+                    localStorageService.save('AG_APP_LOCKED', 'false');
+                    this.setViewPropsUnlocked();
                     dataService.saveMetadata(this.metadata);
                 }
 
@@ -302,7 +303,7 @@
                             if (p && p.catch) p.catch(() => {});
                         } catch (e) {}
                     }
-                    if (autoLock || this.metadata.locked || pinApp) {
+                    if (autoLock || (pinApp && this.metadata.locked)) {
                         try {
                             kioskService.lockApp({ fullscreen: autoFullscreen });
                         } catch (e) {}
@@ -314,7 +315,7 @@
 
                 // Si el navegador web de escritorio restringe la pantalla completa sin gesto previo del usuario,
                 // aseguramos que se active de forma transparente en la primera interacción (toque, clic o tecla)
-                if (autoFullscreen || pinApp || autoLock || this.metadata.locked) {
+                if (autoFullscreen || (pinApp && this.metadata.locked) || autoLock) {
                     let engaged = false;
                     const onUserInteraction = () => {
                         if (engaged) return;
@@ -700,19 +701,15 @@
             let autoLock = !!appSettings.autoLockOnStartup;
             let autoFullscreen = !!appSettings.autoFullscreenOnStartup;
 
-            let storedLocked = localStorageService.get('AG_APP_LOCKED');
             let savedMetadata = await dataService.getMetadata();
             let metadata = JSON.parse(JSON.stringify(savedMetadata || new MetaData()));
             metadata.lastOpenedGridId = this.gridId;
-            if (storedLocked !== null && storedLocked !== undefined) {
-                metadata.locked = storedLocked === 'true';
-            } else {
-                metadata.locked = !!(metadata.locked || autoLock || urlParamService.isLocked(true));
-            }
-            if (autoLock) {
-                metadata.locked = true;
-                localStorageService.save('AG_APP_LOCKED', 'true');
-            }
+            
+            // La app solo se bloquea al iniciar si está activada la casilla autoLock en configuración
+            let startLocked = autoLock || urlParamService.isLocked(false);
+            metadata.locked = startLocked;
+            localStorageService.save('AG_APP_LOCKED', startLocked ? 'true' : 'false');
+            
             metadata.fullscreen = !!(metadata.fullscreen || (autoFullscreen && util.isFullscreen()));
 
             metadata.inputConfig.scanEnabled = urlParamService.isScanningEnabled() ? true : metadata.inputConfig.scanEnabled;
@@ -723,6 +720,8 @@
             if (this.metadata.locked) {
                 this.unlockCounter = UNLOCK_COUNT;
                 this.setViewPropsLocked();
+            } else {
+                this.setViewPropsUnlocked();
             }
 
             this.globalGridData = await dataService.getGlobalGrid();
@@ -856,32 +855,66 @@
 </script>
 
 <style scoped>
-.floating-fullscreen-exit-btn {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 99999;
-    background: rgba(30, 30, 30, 0.75);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 50%;
-    width: 44px;
+.grid-top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
     height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    overflow: hidden;
+    border-bottom: 2px solid lightgray;
+}
+
+.grid-top-header [style*="display: none"],
+.grid-top-header button[style*="display: none"],
+.grid-top-header .btn-group[style*="display: none"],
+.grid-top-header [hidden] {
+    display: none !important;
+}
+
+.grid-top-header .header-left-group,
+.grid-top-header .header-right-group {
     display: flex;
     align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    cursor: pointer;
-    font-size: 18px;
-    opacity: 0.85;
-    transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
-    padding: 0;
-    outline: none;
+    flex-wrap: nowrap;
+    gap: 6px;
 }
-.floating-fullscreen-exit-btn:hover,
-.floating-fullscreen-exit-btn:active {
-    opacity: 1;
-    transform: scale(1.08);
-    background: rgba(0, 0, 0, 0.95);
+
+.grid-top-header button {
+    float: none;
+    margin: 0;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.grid-top-header .btn-group {
+    float: none;
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+}
+
+.grid-top-header .btn-group button {
+    float: none;
+}
+
+.grid-top-header button i {
+    margin-right: 4px;
+    margin-left: 0;
+    font-size: 1.1em;
+}
+
+.grid-top-header button i:only-child {
+    margin-right: 0;
 }
 </style>

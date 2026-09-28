@@ -21,7 +21,7 @@ function ClickerConstructor(itemSelector, options) {
 
     function onclick(event) {
         let now = new Date().getTime();
-        if (now - globalLastOnClick < 80) {
+        if (now - globalLastOnClick < 350) {
             return;
         }
         globalLastOnClick = now;

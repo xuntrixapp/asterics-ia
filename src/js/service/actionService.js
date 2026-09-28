@@ -64,7 +64,7 @@ actionService.doAction = async function (gridIdOrObject, gridElementId) {
         return;
     }
     let minPause = minActionPauseMs > 0 ? minActionPauseMs : 50;
-    if (now - lastActionTime < minPause) {
+    if (now - lastActionTime < minPause || (gridElementId === lastActionElementId && now - lastActionTime < 350)) {
         log.debug('doAction omitido: cooldown de acción (' + (now - lastActionTime) + 'ms)');
         return;
     }
